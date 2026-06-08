@@ -1,0 +1,39 @@
+import Link from "next/link";
+
+const LINKS = [
+  { href: "/organizador", label: "Visão geral" },
+  { href: "/organizador/solicitar", label: "Solicitar verificação" },
+  { href: "/organizador/sorteios", label: "Minhas seleções" },
+];
+
+export function OrganizerShell({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="mx-auto max-w-7xl px-6 py-12 grid lg:grid-cols-[220px_1fr] gap-10">
+      <aside className="space-y-1">
+        <p className="text-xs uppercase tracking-wide text-muted mb-3">Painel do organizador</p>
+        {LINKS.map((link) => (
+          <Link
+            key={link.href}
+            href={link.href}
+            className="block text-sm px-3 py-2 rounded-md text-muted hover:text-foreground hover:bg-surface transition-colors"
+          >
+            {link.label}
+          </Link>
+        ))}
+      </aside>
+      <div>
+        <h1 className="text-2xl font-semibold">{title}</h1>
+        <p className="text-muted text-sm mt-1 mb-8">{description}</p>
+        {children}
+      </div>
+    </div>
+  );
+}

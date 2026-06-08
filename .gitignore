@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local dev artifacts
+dev-server.log
+*.png
+
+# claude code memory (local only)
+.claude/

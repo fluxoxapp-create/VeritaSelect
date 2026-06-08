@@ -2,13 +2,13 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { ADMIN_SESSION_COOKIE, verifyAdminSessionToken } from "@/lib/admin-auth";
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   let response = NextResponse.next({ request });
 
   // Refresh the Supabase session on every request — Server Components can
-  // only read cookies, so the proxy is the only place an expiring access
+  // only read cookies, so the middleware is the only place an expiring access
   // token can be silently rotated before it reaches a page.
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

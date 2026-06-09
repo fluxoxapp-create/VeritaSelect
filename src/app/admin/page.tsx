@@ -144,6 +144,7 @@ export default async function AdminPage() {
           { label: "Organizadores", href: "/admin/organizadores" },
           { label: "Seleções", href: "/admin/selecoes" },
           { label: "Categorias", href: "/admin/categorias" },
+          { label: "Compradores", href: "/admin/compradores" },
           { label: "💳 Compras", href: "/admin/compras" },
         ].map((l) => (
           <Link key={l.label} href={l.href} className="px-4 py-2 text-sm rounded-md border border-border bg-surface hover:border-gold/40 transition-colors">

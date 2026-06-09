@@ -1,25 +1,20 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getProfileRole, logAuthEvent, sanitizeAuditText } from "@/lib/auth-audit";
 import { checkAuthRateLimit } from "@/lib/rate-limit";
 
-type FormState = { error?: string } | undefined;
+type FormState = { error?: string; redirectTo?: string } | undefined;
 
 export async function signIn(_prevState: FormState, formData: FormData): Promise<FormState> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
+  const next = String(formData.get("next") ?? "/dashboard").trim();
 
   if (!email || !password) {
     return { error: "Informe e-mail e senha." };
   }
 
-  // Brute-force gate: one bucket per source IP (catches credential stuffing
-  // across many accounts) and one per attempted email (catches a single
-  // account being hammered from many addresses). Supabase Auth itself rate-
-  // limits sign-ins, but that's a global default we don't control — this is
-  // the per-account/per-IP layer the appsec review asked for.
   const allowed = await checkAuthRateLimit({
     action: "sign_in",
     identity: email,
@@ -36,10 +31,6 @@ export async function signIn(_prevState: FormState, formData: FormData): Promise
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    // Logged with no actor_id (we deliberately don't look the email up — that
-    // would itself be an enumeration oracle) so failed attempts are still
-    // visible in aggregate for brute-force detection without identifying the
-    // target account from the log entry alone.
     await logAuthEvent({
       actorId: null,
       actorRole: null,
@@ -55,7 +46,11 @@ export async function signIn(_prevState: FormState, formData: FormData): Promise
     action: "auth.sign_in",
   });
 
-  redirect("/dashboard");
+  // Return the redirect target — the client component does the navigation
+  // so the session cookies set by signInWithPassword are already committed
+  // before the redirect happens (avoids Next.js redirect() swallowing cookies).
+  const redirectTo = next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
+  return { redirectTo };
 }
 
 export async function signOut() {
@@ -72,8 +67,7 @@ export async function signOut() {
     });
   }
 
-  // signOut() revokes the refresh token server-side (not just clearing the
-  // cookie) — the session is dead in Supabase Auth, not just locally.
   await supabase.auth.signOut();
-  redirect("/");
+  // Return instead of redirect() for the same reason — caller navigates
+  return { redirectTo: "/" };
 }

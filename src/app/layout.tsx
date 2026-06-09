@@ -15,6 +15,8 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "VeritaSelect | Seleções Verificadas",
   description: "Seleções premium verificadas — carros, motos, barcos, agro e mais. Curadoria, organizador verificado e apuração oficial.",

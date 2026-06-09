@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 
+type Role = "buyer" | "organizer" | "admin";
+
 type NavUserProps = {
   fullName: string | null;
   email: string;
@@ -15,8 +17,18 @@ type NavUserProps = {
 export function NavUser({ fullName, email, isOrganizer, isAdmin }: NavUserProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [role, setRole] = useState<"buyer" | "organizer">(isOrganizer ? "organizer" : "buyer");
+  const [role, setRole] = useState<Role>(() => {
+    if (isAdmin) return "admin";
+    if (isOrganizer) return "organizer";
+    return "buyer";
+  });
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Build the list of available roles for this user
+  const roles: Role[] = ["buyer"];
+  if (isOrganizer) roles.push("organizer");
+  if (isAdmin) roles.push("admin");
+  const multiRole = roles.length > 1;
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -34,7 +46,7 @@ export function NavUser({ fullName, email, isOrganizer, isAdmin }: NavUserProps)
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     );
     await supabase.auth.signOut();
-    router.push("/");
+    router.replace("/");
     router.refresh();
   }
 
@@ -44,33 +56,35 @@ export function NavUser({ fullName, email, isOrganizer, isAdmin }: NavUserProps)
 
   const displayName = fullName?.split(" ")[0] ?? email.split("@")[0];
 
+  const ROLE_LABEL: Record<Role, string> = {
+    buyer: "Comprador",
+    organizer: "Organizador",
+    admin: "Admin",
+  };
+
+  const ROLE_COLOR: Record<Role, string> = {
+    buyer: "bg-gold text-background font-medium",
+    organizer: "bg-gold text-background font-medium",
+    admin: "bg-red-500 text-white font-medium",
+  };
+
   return (
     <div className="relative flex items-center gap-2 sm:gap-3 shrink-0" ref={menuRef}>
-      {/* Role toggle pill — only shows if user is both buyer and organizer */}
-      {isOrganizer && (
-        <button
-          type="button"
-          onClick={() => setRole((r) => (r === "buyer" ? "organizer" : "buyer"))}
-          className="hidden sm:flex items-center text-xs rounded-full border border-border bg-surface-2 overflow-hidden cursor-pointer select-none"
-          title="Alternar entre conta de comprador e organizador"
-        >
-          <span className={`px-3 py-1 transition-colors ${role === "buyer" ? "bg-gold text-background font-medium" : "text-muted"}`}>
-            Comprador
-          </span>
-          <span className={`px-3 py-1 transition-colors ${role === "organizer" ? "bg-gold text-background font-medium" : "text-muted"}`}>
-            Organizador
-          </span>
-        </button>
-      )}
-
-      {/* Admin badge */}
-      {isAdmin && (
-        <Link
-          href="/admin"
-          className="hidden sm:block text-xs px-2.5 py-1 rounded-full border border-gold/40 text-gold-soft hover:bg-gold/10 transition-colors"
-        >
-          Admin
-        </Link>
+      {/* Role toggle pill — desktop, only if user has >1 role */}
+      {multiRole && (
+        <div className="hidden sm:flex items-center text-xs rounded-full border border-border bg-surface-2 overflow-hidden select-none">
+          {roles.map((r) => (
+            <button
+              key={r}
+              type="button"
+              onClick={() => setRole(r)}
+              className={`px-3 py-1 transition-colors cursor-pointer ${role === r ? ROLE_COLOR[r] : "text-muted hover:text-foreground"}`}
+              title={`Alternar para ${ROLE_LABEL[r]}`}
+            >
+              {ROLE_LABEL[r]}
+            </button>
+          ))}
+        </div>
       )}
 
       {/* Avatar button */}
@@ -80,7 +94,9 @@ export function NavUser({ fullName, email, isOrganizer, isAdmin }: NavUserProps)
         className="flex items-center gap-2 rounded-full cursor-pointer focus:outline-none group"
         aria-label="Menu da conta"
       >
-        <div className="h-8 w-8 rounded-full bg-gold/20 border border-gold/40 flex items-center justify-center text-xs font-semibold text-gold-soft">
+        <div className={`h-8 w-8 rounded-full border flex items-center justify-center text-xs font-semibold ${
+          role === "admin" ? "bg-red-500/20 border-red-400/40 text-red-300" : "bg-gold/20 border-gold/40 text-gold-soft"
+        }`}>
           {initials}
         </div>
         <span className="hidden sm:block text-sm text-muted group-hover:text-foreground transition-colors max-w-[120px] truncate">
@@ -96,7 +112,7 @@ export function NavUser({ fullName, email, isOrganizer, isAdmin }: NavUserProps)
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-56 rounded-xl border border-border bg-surface shadow-xl z-50 overflow-hidden">
+        <div className="absolute right-0 top-full mt-2 w-60 rounded-xl border border-border bg-surface shadow-xl z-50 overflow-hidden">
           {/* Header */}
           <div className="px-4 py-3 border-b border-border">
             <p className="text-sm font-medium truncate">{fullName ?? displayName}</p>
@@ -104,46 +120,54 @@ export function NavUser({ fullName, email, isOrganizer, isAdmin }: NavUserProps)
           </div>
 
           {/* Mobile role toggle */}
-          {isOrganizer && (
+          {multiRole && (
             <div className="px-4 py-2 border-b border-border">
               <div className="flex rounded-md border border-border overflow-hidden text-xs">
-                <button
-                  type="button"
-                  onClick={() => setRole("buyer")}
-                  className={`flex-1 py-1.5 transition-colors cursor-pointer ${role === "buyer" ? "bg-gold text-background font-medium" : "text-muted hover:text-foreground"}`}
-                >
-                  Comprador
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRole("organizer")}
-                  className={`flex-1 py-1.5 transition-colors cursor-pointer ${role === "organizer" ? "bg-gold text-background font-medium" : "text-muted hover:text-foreground"}`}
-                >
-                  Organizador
-                </button>
+                {roles.map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setRole(r)}
+                    className={`flex-1 py-1.5 transition-colors cursor-pointer ${
+                      role === r ? ROLE_COLOR[r] : "text-muted hover:text-foreground"
+                    }`}
+                  >
+                    {ROLE_LABEL[r]}
+                  </button>
+                ))}
               </div>
             </div>
           )}
 
           {/* Links based on role */}
           <div className="py-1.5">
-            {role === "buyer" || !isOrganizer ? (
+            {role === "buyer" && (
               <>
                 <DropdownLink href="/dashboard" onClick={() => setOpen(false)}>Minha conta</DropdownLink>
                 <DropdownLink href="/dashboard/compras" onClick={() => setOpen(false)}>Minhas compras</DropdownLink>
                 <DropdownLink href="/dashboard/numeros" onClick={() => setOpen(false)}>Meus números</DropdownLink>
               </>
-            ) : (
+            )}
+            {role === "organizer" && (
               <>
                 <DropdownLink href="/organizador/sorteios" onClick={() => setOpen(false)}>Minhas seleções</DropdownLink>
                 <DropdownLink href="/organizador/sorteios/novo" onClick={() => setOpen(false)}>Nova seleção</DropdownLink>
-                <DropdownLink href="/dashboard/conta" onClick={() => setOpen(false)}>Minha conta</DropdownLink>
+                <DropdownLink href="/dashboard" onClick={() => setOpen(false)}>Minha conta</DropdownLink>
               </>
             )}
-            {isAdmin && (
-              <DropdownLink href="/admin" onClick={() => setOpen(false)}>
-                <span className="text-gold-soft">Painel admin</span>
-              </DropdownLink>
+            {role === "admin" && (
+              <>
+                <DropdownLink href="/admin" onClick={() => setOpen(false)}>
+                  <span className="text-red-300">Painel admin</span>
+                </DropdownLink>
+                <DropdownLink href="/admin/selecoes" onClick={() => setOpen(false)}>
+                  <span className="text-red-300">Seleções</span>
+                </DropdownLink>
+                <DropdownLink href="/admin/compras" onClick={() => setOpen(false)}>
+                  <span className="text-red-300">Compras</span>
+                </DropdownLink>
+                <DropdownLink href="/dashboard" onClick={() => setOpen(false)}>Minha conta pessoal</DropdownLink>
+              </>
             )}
           </div>
 

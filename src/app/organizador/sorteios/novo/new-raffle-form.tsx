@@ -209,12 +209,18 @@ export function NewRaffleForm({ categories }: { categories: { name: string; icon
               name="description"
               required
               rows={4}
+              maxLength={900}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Ano, condição, itens inclusos, procedência, documentação disponível..."
               className={inputClass + " resize-y"}
             />
-            <p className="text-xs text-muted mt-1">{description.trim().length}/30 caracteres mínimos</p>
+            <div className="flex justify-between mt-1">
+              <p className="text-xs text-muted">mínimo 30 caracteres</p>
+              <p className={`text-xs tabular-nums ${description.trim().length >= 870 ? "text-amber-400" : "text-muted"}`}>
+                {description.trim().length}/900
+              </p>
+            </div>
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4">

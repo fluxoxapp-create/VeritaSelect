@@ -45,6 +45,9 @@ export async function createRaffleDraft(_prevState: FormState, formData: FormDat
   if (!title || !category || !description || !cotaPriceRaw || !totalCotasRaw || !drawDate) {
     return { error: "Preencha todos os campos obrigatórios." };
   }
+  if (description.length > 900) {
+    return { error: "A descrição pode ter no máximo 900 caracteres." };
+  }
   if (!DRAW_METHODS.includes(drawMethod as typeof DRAW_METHODS[number])) {
     return { error: "Método de apuração inválido." };
   }

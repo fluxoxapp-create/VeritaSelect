@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Rounded dark background -->
+  <rect width="32" height="32" rx="6" fill="#0c0c0c"/>
+  <!-- Verification shield behind V (dark green, peeks around edges) -->
+  <path d="M16,2 L29,7 L29,17.5 Q29,25.5 16,31 Q3,25.5 3,17.5 L3,7 Z" fill="#0e2a18"/>
+  <!-- Bold golden V — even-odd rule cuts the gap between the arms -->
+  <path fill-rule="evenodd" d="M2,4 L30,4 L19,28 L13,28 Z M9,4 L16,21 L23,4 Z" fill="#c9a84c"/>
+</svg>

@@ -155,6 +155,35 @@ export async function fetchPayment(paymentId: string | number): Promise<PixPayme
   return json as unknown as PixPaymentResult;
 }
 
+/**
+ * Issues a full refund for a Mercado Pago payment.
+ * Calling this with no body triggers a full refund for the original amount.
+ */
+export async function refundPayment(paymentId: string | number): Promise<void> {
+  const token = getAccessToken();
+
+  const response = await fetch(
+    `${MP_API_BASE}/v1/payments/${encodeURIComponent(String(paymentId))}/refunds`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: "{}",
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    const json = (await response.json().catch(() => null)) as Record<string, unknown> | null;
+    const message =
+      (json && typeof json.message === "string" && json.message) ||
+      `Mercado Pago retornou status ${response.status} ao estornar o pagamento ${paymentId}.`;
+    throw new MercadoPagoApiError(message, response.status, json);
+  }
+}
+
 export class MercadoPagoApiError extends Error {
   status: number;
   payload: unknown;

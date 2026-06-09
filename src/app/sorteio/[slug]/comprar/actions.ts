@@ -71,9 +71,9 @@ export async function startCheckout(
     };
   }
 
-  // --- Load profile (banned check + payer name) and raffle (server-side truth) ---
+  // --- Load profile (banned check + role check + payer name) and raffle (server-side truth) ---
   const [{ data: profile }, { data: raffle }] = await Promise.all([
-    supabase.from("profiles").select("full_name, is_banned").eq("id", user.id).maybeSingle(),
+    supabase.from("profiles").select("full_name, is_banned, role").eq("id", user.id).maybeSingle(),
     supabase
       .from("raffles")
       .select("id, slug, title, status, cota_price_cents, total_cotas")
@@ -83,6 +83,9 @@ export async function startCheckout(
 
   if (profile?.is_banned) {
     return { status: "error", message: "Sua conta está suspensa. Entre em contato com o suporte." };
+  }
+  if (profile?.role === "organizer" || profile?.role === "admin") {
+    return { status: "error", message: "Organizadores não estão habilitados para comprar acessos." };
   }
   if (!raffle) {
     return { status: "error", message: "Seleção não encontrada." };

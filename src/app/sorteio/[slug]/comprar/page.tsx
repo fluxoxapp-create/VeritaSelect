@@ -20,6 +20,14 @@ export default async function ComprarPage({
     redirect(`/entrar?next=${encodeURIComponent(`/sorteio/${slug}/comprar`)}`);
   }
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const isOrganizer = profile?.role === "organizer" || profile?.role === "admin";
+
   const raffle = await getRaffleBySlug(slug);
   if (!raffle) notFound();
 
@@ -64,7 +72,12 @@ export default async function ComprarPage({
           </div>
         </div>
 
-        {remaining <= 0 ? (
+        {isOrganizer ? (
+          <div className="rounded-lg border border-amber-400/30 bg-amber-400/5 p-5 text-center space-y-1">
+            <p className="text-sm font-medium text-amber-300">Organizadores não podem comprar acessos</p>
+            <p className="text-xs text-muted">Contas de organizador não estão habilitadas para participar de seleções.</p>
+          </div>
+        ) : remaining <= 0 ? (
           <div className="rounded-lg border border-dashed border-border bg-surface-2 p-5 text-center text-sm text-muted">
             Todos os acessos desta seleção já foram garantidos.
           </div>

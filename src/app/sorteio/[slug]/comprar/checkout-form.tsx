@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { startCheckout, type CheckoutState } from "./actions";
 
 const QUICK_OPTIONS = [5, 10, 25, 50];
+const MAX_PER_PURCHASE = 500;
 
 const initialState: CheckoutState = { status: "idle" };
 
@@ -18,7 +19,8 @@ export function CheckoutForm({
   maxQuantity: number;
 }) {
   const router = useRouter();
-  const [quantity, setQuantity] = useState(() => Math.min(QUICK_OPTIONS[1] ?? 1, maxQuantity));
+  const effectiveMax = Math.min(maxQuantity, MAX_PER_PURCHASE);
+  const [quantity, setQuantity] = useState(() => Math.min(QUICK_OPTIONS[1] ?? 1, effectiveMax));
   const [state, formAction, pending] = useActionState(startCheckout, initialState);
 
   useEffect(() => {
@@ -31,7 +33,7 @@ export function CheckoutForm({
 
   function clamp(value: number) {
     if (!Number.isFinite(value)) return 1;
-    return Math.min(Math.max(Math.trunc(value), 1), Math.max(maxQuantity, 1));
+    return Math.min(Math.max(Math.trunc(value), 1), Math.max(effectiveMax, 1));
   }
 
   return (
@@ -43,7 +45,7 @@ export function CheckoutForm({
         <p className="text-sm font-medium mb-2">Quantidade de acessos</p>
         <div className="grid grid-cols-4 gap-2 mb-3">
           {QUICK_OPTIONS.map((qty) => {
-            const disabled = qty > maxQuantity;
+            const disabled = qty > effectiveMax;
             return (
               <button
                 key={qty}
@@ -75,7 +77,7 @@ export function CheckoutForm({
           <input
             type="number"
             min={1}
-            max={maxQuantity}
+            max={effectiveMax}
             value={quantity}
             onChange={(e) => setQuantity(clamp(Number.parseInt(e.target.value, 10)))}
             className="flex-1 rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-center outline-none focus:border-gold/60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
@@ -83,14 +85,14 @@ export function CheckoutForm({
           <button
             type="button"
             onClick={() => setQuantity(clamp(quantity + 1))}
-            disabled={quantity >= maxQuantity}
+            disabled={quantity >= effectiveMax}
             className="h-9 w-9 rounded-md border border-border text-lg text-muted hover:border-gold/40 hover:text-foreground transition-colors disabled:opacity-30 cursor-pointer flex items-center justify-center shrink-0"
           >
             +
           </button>
         </div>
         <p className="text-xs text-muted mt-1.5 text-right">
-          máx. {maxQuantity.toLocaleString("pt-BR")} disponíveis
+          máx. {effectiveMax.toLocaleString("pt-BR")} disponíveis
         </p>
       </div>
 
@@ -109,7 +111,7 @@ export function CheckoutForm({
 
       <button
         type="submit"
-        disabled={pending || maxQuantity <= 0}
+        disabled={pending || effectiveMax <= 0}
         className="w-full py-3.5 rounded-md bg-gold text-background font-semibold hover:bg-gold-soft transition-colors shadow-lg shadow-gold/10 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
       >
         {pending ? "Gerando Pix…" : "Gerar Pix e reservar acessos"}

@@ -13,7 +13,7 @@ export type CheckoutState =
   | { status: "success"; compraId: string };
 
 const MIN_QUANTITY = 1;
-const MAX_QUANTITY = 200; // generous ceiling — real cap is "numbers still available"
+const MAX_QUANTITY = 500; // real cap is "numbers still available" — kept in sync with checkout-form MAX_PER_PURCHASE
 const HOLD_MINUTES = 10;
 
 function siteUrl(): string {

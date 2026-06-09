@@ -33,8 +33,14 @@ function centsToReais(cents: number) {
 function suggestPriceCents(targetRevenueCents: number, qty: number): number {
   if (qty <= 0) return 0;
   const raw = Math.ceil(targetRevenueCents / qty);
+  // Sub-R$1: snap to common micro-price points
+  if (raw < 100) {
+    if (raw <= 49) return 49;
+    if (raw <= 90) return 90;
+    return 99;
+  }
+  // R$1+: round up to nearest X,90 endpoint
   const mod = raw % 100;
-  // Round up to the nearest X.90 endpoint
   if (mod <= 90) return raw - mod + 90;
   return raw - mod + 190;
 }
@@ -285,7 +291,7 @@ export function NewRaffleForm({ categories }: { categories: { name: string; icon
                 inputMode="decimal"
                 value={cotaPriceRaw}
                 onChange={(e) => setCotaPriceRaw(e.target.value)}
-                placeholder="Ex.: 29,90"
+                placeholder="Ex.: 29,90 ou 0,99"
                 className={inputClass}
               />
             </div>

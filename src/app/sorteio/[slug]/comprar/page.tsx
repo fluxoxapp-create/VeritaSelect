@@ -52,9 +52,15 @@ export default async function ComprarPage({
                 style={{ width: `${pct}%` }}
               />
             </div>
-            <p className="mt-2 text-xs text-muted">
-              {pct}% dos acessos garantidos · {remaining} restantes
-            </p>
+            <div className="mt-2 flex items-center justify-between text-xs text-muted">
+              <span>{pct}% garantidos</span>
+              <span>
+                <span className="text-foreground font-medium">{remaining.toLocaleString("pt-BR")}</span>
+                {" "}de{" "}
+                <span className="text-foreground font-medium">{raffle.totalCotas.toLocaleString("pt-BR")}</span>
+                {" "}disponíveis
+              </span>
+            </div>
           </div>
         </div>
 

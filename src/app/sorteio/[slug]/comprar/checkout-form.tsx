@@ -41,7 +41,7 @@ export function CheckoutForm({
 
       <div>
         <p className="text-sm font-medium mb-2">Quantidade de acessos</p>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-4 gap-2 mb-3">
           {QUICK_OPTIONS.map((qty) => {
             const disabled = qty > maxQuantity;
             return (
@@ -63,18 +63,35 @@ export function CheckoutForm({
             );
           })}
         </div>
-        <div className="mt-3 flex items-center gap-3">
-          <label className="text-sm text-muted shrink-0">Outra quantidade</label>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setQuantity(clamp(quantity - 1))}
+            disabled={quantity <= 1}
+            className="h-9 w-9 rounded-md border border-border text-lg text-muted hover:border-gold/40 hover:text-foreground transition-colors disabled:opacity-30 cursor-pointer flex items-center justify-center shrink-0"
+          >
+            −
+          </button>
           <input
             type="number"
             min={1}
             max={maxQuantity}
             value={quantity}
             onChange={(e) => setQuantity(clamp(Number.parseInt(e.target.value, 10)))}
-            className="w-28 rounded-md border border-border bg-surface-2 px-3 py-1.5 text-sm outline-none focus:border-gold/60"
+            className="flex-1 rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-center outline-none focus:border-gold/60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
-          <span className="text-xs text-muted">máx. {maxQuantity}</span>
+          <button
+            type="button"
+            onClick={() => setQuantity(clamp(quantity + 1))}
+            disabled={quantity >= maxQuantity}
+            className="h-9 w-9 rounded-md border border-border text-lg text-muted hover:border-gold/40 hover:text-foreground transition-colors disabled:opacity-30 cursor-pointer flex items-center justify-center shrink-0"
+          >
+            +
+          </button>
         </div>
+        <p className="text-xs text-muted mt-1.5 text-right">
+          máx. {maxQuantity.toLocaleString("pt-BR")} disponíveis
+        </p>
       </div>
 
       <div className="rounded-lg border border-border bg-surface-2 px-4 py-3 flex items-center justify-between">

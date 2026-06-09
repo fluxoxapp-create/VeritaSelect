@@ -1,10 +1,22 @@
 import { RaffleCard } from "@/components/raffle-card";
 import { getPublishedRaffles } from "@/lib/data/raffles";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-const CATEGORIES = ["Todos", "Agro", "Caminhonetes", "Motos", "Náutico", "Automotivo"];
+async function getActiveCategories(): Promise<{ name: string; icon: string }[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from("categories")
+    .select("name, icon")
+    .eq("is_active", true)
+    .order("display_order", { ascending: true });
+  return data ?? [];
+}
 
 export default async function SorteiosPage() {
-  const raffles = await getPublishedRaffles();
+  const [raffles, categories] = await Promise.all([
+    getPublishedRaffles(),
+    getActiveCategories(),
+  ]);
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 py-12 sm:py-16">
@@ -16,12 +28,15 @@ export default async function SorteiosPage() {
       </div>
 
       <div className="flex flex-wrap gap-2 mb-8">
-        {CATEGORIES.map((category) => (
+        <span className="text-sm px-4 py-2 rounded-full border border-gold/60 text-gold-soft">
+          Todos
+        </span>
+        {categories.map((cat) => (
           <span
-            key={category}
-            className="text-sm px-4 py-2 rounded-full border border-border text-muted first:border-gold/60 first:text-gold-soft"
+            key={cat.name}
+            className="text-sm px-4 py-2 rounded-full border border-border text-muted"
           >
-            {category}
+            {cat.icon} {cat.name}
           </span>
         ))}
       </div>

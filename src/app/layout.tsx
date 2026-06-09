@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { NavUser } from "@/components/nav-user";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -25,11 +27,35 @@ const NAV_LINKS = [
   { href: "/seguranca", label: "Segurança" },
 ];
 
-export default function RootLayout({
+async function getNavUser() {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.email) return null;
+
+    const [{ data: profile }, { data: organizer }] = await Promise.all([
+      supabase.from("profiles").select("full_name, role").eq("id", user.id).maybeSingle(),
+      supabase.from("organizers").select("id").eq("id", user.id).eq("kyc_status", "approved").maybeSingle(),
+    ]);
+
+    return {
+      email: user.email,
+      fullName: profile?.full_name ?? null,
+      isOrganizer: !!organizer,
+      isAdmin: profile?.role === "admin",
+    };
+  } catch {
+    return null;
+  }
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const navUser = await getNavUser();
+
   return (
     <html
       lang="pt-BR"
@@ -39,7 +65,7 @@ export default function RootLayout({
         <header className="border-b border-border/80 bg-background/95 backdrop-blur sticky top-0 z-50">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
             <Link href="/" className="shrink-0 text-base sm:text-lg font-semibold tracking-wide whitespace-nowrap">
-              VERITA <span className="text-gradient-gold">SORTEIOS</span>
+              VERITA<span className="text-gradient-gold">SELECT</span>
             </Link>
             <nav className="hidden md:flex items-center gap-8 text-sm text-muted">
               {NAV_LINKS.map((link) => (
@@ -48,20 +74,30 @@ export default function RootLayout({
                 </Link>
               ))}
             </nav>
-            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-              <Link
-                href="/entrar"
-                className="text-sm text-muted hover:text-foreground transition-colors whitespace-nowrap"
-              >
-                Entrar
-              </Link>
-              <Link
-                href="/cadastro"
-                className="text-sm font-medium px-3 sm:px-4 py-2 rounded-md bg-gold text-background hover:bg-gold-soft transition-colors whitespace-nowrap"
-              >
-                Criar conta
-              </Link>
-            </div>
+
+            {navUser ? (
+              <NavUser
+                fullName={navUser.fullName}
+                email={navUser.email}
+                isOrganizer={navUser.isOrganizer}
+                isAdmin={navUser.isAdmin}
+              />
+            ) : (
+              <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                <Link
+                  href="/entrar"
+                  className="text-sm text-muted hover:text-foreground transition-colors whitespace-nowrap"
+                >
+                  Entrar
+                </Link>
+                <Link
+                  href="/cadastro"
+                  className="text-sm font-medium px-3 sm:px-4 py-2 rounded-md bg-gold text-background hover:bg-gold-soft transition-colors whitespace-nowrap"
+                >
+                  Criar conta
+                </Link>
+              </div>
+            )}
           </div>
         </header>
 
@@ -71,7 +107,7 @@ export default function RootLayout({
           <div className="mx-auto max-w-7xl px-4 sm:px-6 py-12 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-8 text-sm">
             <div className="md:col-span-1">
               <p className="text-base font-semibold tracking-wide mb-3">
-                VERITA <span className="text-gradient-gold">SORTEIOS</span>
+                VERITA<span className="text-gradient-gold">SELECT</span>
               </p>
               <p className="text-muted max-w-xs">
                 Plataforma premium aberta ao público, com organizadores altamente verificados.
@@ -106,8 +142,14 @@ export default function RootLayout({
             <div>
               <p className="font-medium mb-3">Conta</p>
               <ul className="space-y-2 text-muted">
-                <li><Link href="/entrar" className="hover:text-foreground">Entrar</Link></li>
-                <li><Link href="/cadastro" className="hover:text-foreground">Criar conta</Link></li>
+                {navUser ? (
+                  <li><Link href="/dashboard" className="hover:text-foreground">Minha conta</Link></li>
+                ) : (
+                  <>
+                    <li><Link href="/entrar" className="hover:text-foreground">Entrar</Link></li>
+                    <li><Link href="/cadastro" className="hover:text-foreground">Criar conta</Link></li>
+                  </>
+                )}
               </ul>
             </div>
           </div>

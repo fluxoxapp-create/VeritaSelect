@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { coverImage } from "@/lib/cover-image";
-import { getRaffleBySlug, progress } from "@/lib/data/raffles";
+import { getRaffleBySlug } from "@/lib/data/raffles";
+import { CheckoutSidebar } from "./checkout-sidebar";
 
 export default async function RafflePage({
   params,
@@ -12,9 +13,6 @@ export default async function RafflePage({
   const { slug } = await params;
   const raffle = await getRaffleBySlug(slug);
   if (!raffle) notFound();
-
-  const pct = progress(raffle);
-  const cotaOptions = [5, 10, 25, 50];
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10 pb-28 lg:pb-10">
@@ -130,66 +128,12 @@ export default async function RafflePage({
 
         {/* Checkout */}
         <aside>
-          <div className="rounded-xl border border-border bg-surface p-6 space-y-5 lg:sticky lg:top-24">
-            <div>
-              <p className="text-sm text-muted">Acesso a partir de</p>
-              <p className="text-3xl font-semibold text-gold-soft">
-                {raffle.cotaPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-              </p>
-            </div>
-
-            <div>
-              <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-gold-soft to-gold rounded-full" style={{ width: `${pct}%` }} />
-              </div>
-              <p className="mt-2 text-xs text-muted">{pct}% dos acessos garantidos</p>
-            </div>
-
-            <div>
-              <p className="text-sm font-medium mb-2">Quantidade de acessos</p>
-              <div className="grid grid-cols-4 gap-2">
-                {cotaOptions.map((qty, i) => (
-                  <button
-                    key={qty}
-                    type="button"
-                    className={`text-sm text-center py-2 rounded-md border transition-colors cursor-pointer ${
-                      i === 1
-                        ? "border-gold bg-gold/10 text-gold-soft"
-                        : "border-border text-muted hover:border-gold/40 hover:text-foreground"
-                    }`}
-                  >
-                    {qty}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <button
-                type="button"
-                className="px-3 py-2 rounded-md border border-gold/60 bg-gold/10 text-gold-soft text-center cursor-pointer"
-              >
-                Números aleatórios
-              </button>
-              <button
-                type="button"
-                className="px-3 py-2 rounded-md border border-border text-muted hover:border-gold/40 hover:text-foreground transition-colors text-center cursor-pointer"
-              >
-                Escolher manualmente
-              </button>
-            </div>
-
-            <Link
-              href={`/sorteio/${raffle.slug}/comprar`}
-              className="block w-full py-3.5 rounded-md bg-gold text-background font-semibold text-center hover:bg-gold-soft transition-colors shadow-lg shadow-gold/10"
-            >
-              Comprar com Pix
-            </Link>
-            <div className="flex items-center justify-center gap-4 text-xs text-muted">
-              <span className="flex items-center gap-1">🔒 Pagamento protegido</span>
-              <span className="flex items-center gap-1">⚡ Confirmação em segundos</span>
-            </div>
-          </div>
+          <CheckoutSidebar
+            slug={raffle.slug}
+            cotaPrice={raffle.cotaPrice}
+            soldCotas={raffle.soldCotas}
+            totalCotas={raffle.totalCotas}
+          />
         </aside>
       </div>
 

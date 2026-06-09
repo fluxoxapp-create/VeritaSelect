@@ -2,11 +2,9 @@
 
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { CoverCategory } from "@/lib/cover-image";
 
 type FormState = { error?: string } | undefined;
-
-const CATEGORIES: CoverCategory[] = ["Agro", "Caminhonetes", "Motos", "Náutico", "Automotivo"];
+const DRAW_METHODS = ["loteria_federal", "live"] as const;
 
 function slugify(title: string) {
   return title
@@ -35,12 +33,20 @@ export async function createRaffleDraft(_prevState: FormState, formData: FormDat
   const cotaPriceRaw = String(formData.get("cotaPrice") ?? "");
   const totalCotasRaw = String(formData.get("totalCotas") ?? "");
   const drawDate = String(formData.get("drawDate") ?? "");
+  const drawMethod = String(formData.get("drawMethod") ?? "loteria_federal");
+
+  // Optional enrichment fields (already processed by the client form)
+  const prizeValueCentsRaw = String(formData.get("prizeValueCents") ?? "");
+  const minCotasGoalRaw = String(formData.get("minCotasGoal") ?? "");
+  const deliveryCity = String(formData.get("deliveryCity") ?? "").trim() || null;
+  const deliveryUfRaw = String(formData.get("deliveryUf") ?? "").trim().toUpperCase();
+  const deliveryUf = deliveryUfRaw.length === 2 ? deliveryUfRaw : null;
 
   if (!title || !category || !description || !cotaPriceRaw || !totalCotasRaw || !drawDate) {
-    return { error: "Preencha todos os campos." };
+    return { error: "Preencha todos os campos obrigatórios." };
   }
-  if (!CATEGORIES.includes(category as CoverCategory)) {
-    return { error: "Selecione uma categoria válida." };
+  if (!DRAW_METHODS.includes(drawMethod as typeof DRAW_METHODS[number])) {
+    return { error: "Método de apuração inválido." };
   }
 
   const cotaPriceCents = parseBrlToCents(cotaPriceRaw);
@@ -58,7 +64,20 @@ export async function createRaffleDraft(_prevState: FormState, formData: FormDat
     return { error: "A data de apuração deve ser no futuro." };
   }
 
+  const prizeValueCents = Number.parseInt(prizeValueCentsRaw, 10);
+  const minCotasGoal = Number.parseInt(minCotasGoalRaw, 10);
+
   const supabase = await createSupabaseServerClient();
+
+  // Validate category against DB (active categories only)
+  const { data: validCategories } = await supabase
+    .from("categories")
+    .select("name")
+    .eq("is_active", true);
+  const validNames = (validCategories ?? []).map((c: { name: string }) => c.name);
+  if (!validNames.includes(category)) {
+    return { error: "Selecione uma categoria válida." };
+  }
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -87,7 +106,12 @@ export async function createRaffleDraft(_prevState: FormState, formData: FormDat
       cota_price_cents: cotaPriceCents,
       total_cotas: totalCotas,
       draw_date: drawDate,
+      draw_method: drawMethod,
       status: "draft",
+      ...(Number.isFinite(prizeValueCents) && prizeValueCents > 0 ? { prize_market_value_cents: prizeValueCents } : {}),
+      ...(Number.isFinite(minCotasGoal) && minCotasGoal > 0 ? { min_cotas_goal: minCotasGoal } : {}),
+      ...(deliveryCity ? { delivery_city: deliveryCity } : {}),
+      ...(deliveryUf ? { delivery_uf: deliveryUf } : {}),
     });
 
     if (!error) redirect("/organizador/sorteios");
@@ -95,8 +119,7 @@ export async function createRaffleDraft(_prevState: FormState, formData: FormDat
     if (error.code !== "23505") {
       return { error: "Não foi possível criar a seleção agora. Tente novamente em instantes." };
     }
-    // unique slug conflict — retry with a suffixed slug
   }
 
-  return { error: "Não foi possível gerar um identificador único para esta seleção. Tente um título diferente." };
+  return { error: "Não foi possível gerar um identificador único. Tente um título diferente." };
 }

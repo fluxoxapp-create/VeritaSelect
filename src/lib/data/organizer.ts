@@ -1,6 +1,5 @@
 import "server-only";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { CoverCategory } from "@/lib/cover-image";
 
 export const KYC_STATUS_LABEL: Record<string, string> = {
   not_submitted: "Não enviada",
@@ -58,7 +57,7 @@ export type OrganizerRaffle = {
   id: string;
   slug: string;
   title: string;
-  category: CoverCategory;
+  category: string;
   totalCotas: number;
   soldCotas: number;
   drawDate: string;
@@ -71,7 +70,7 @@ type RaffleRow = {
   id: string;
   slug: string;
   title: string;
-  category: CoverCategory;
+  category: string;
   total_cotas: number;
   draw_date: string;
   status: string;

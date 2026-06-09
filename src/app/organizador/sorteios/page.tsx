@@ -87,17 +87,27 @@ export default async function MinhasSelecoesPage() {
                     )}
                   </td>
                   <td className="px-5 py-4 text-right">
-                    {raffle.status === "draft" && (
-                      <form action={submitRaffleForReview}>
-                        <input type="hidden" name="raffleId" value={raffle.id} />
-                        <button
-                          type="submit"
-                          className="text-xs px-3 py-1.5 rounded-md border border-gold/40 text-gold-soft hover:bg-gold/10 transition-colors"
+                    <div className="flex items-center justify-end gap-2">
+                      {raffle.status === "draft" && (
+                        <Link
+                          href={`/organizador/sorteios/${raffle.id}/premios`}
+                          className="text-xs px-3 py-1.5 rounded-md border border-border text-muted hover:border-gold/40 hover:text-foreground transition-colors"
                         >
-                          Enviar para análise
-                        </button>
-                      </form>
-                    )}
+                          Prêmios
+                        </Link>
+                      )}
+                      {raffle.status === "draft" && (
+                        <form action={submitRaffleForReview}>
+                          <input type="hidden" name="raffleId" value={raffle.id} />
+                          <button
+                            type="submit"
+                            className="text-xs px-3 py-1.5 rounded-md border border-gold/40 text-gold-soft hover:bg-gold/10 transition-colors"
+                          >
+                            Enviar para análise
+                          </button>
+                        </form>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

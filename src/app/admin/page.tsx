@@ -24,7 +24,7 @@ export default async function AdminPage() {
     supabase.from("raffles").select("id", { count: "exact", head: true }).eq("status", "paused"),
     supabase.from("raffles").select("id", { count: "exact", head: true }).eq("status", "completed"),
     supabase.from("compras")
-      .select("id, quantity, total_cents, status, created_at, profiles!compras_buyer_id_fkey(full_name)")
+      .select("id, buyer_id, quantity, total_cents, status, created_at, profiles!compras_buyer_id_fkey(full_name)")
       .order("created_at", { ascending: false })
       .limit(10),
     supabase.from("raffles")
@@ -32,6 +32,16 @@ export default async function AdminPage() {
       .order("created_at", { ascending: false })
       .limit(50),
   ]);
+
+  // Buyer emails for recent purchases
+  const buyerIds = [...new Set((recentPurchases ?? []).map((p) => (p as { buyer_id: string }).buyer_id).filter(Boolean))];
+  const emailMap = new Map<string, string>();
+  if (buyerIds.length) {
+    const { data: emailRows } = await supabase.rpc("get_buyer_emails", { buyer_ids: buyerIds }) as {
+      data: { id: string; email: string }[] | null;
+    };
+    for (const row of emailRows ?? []) emailMap.set(row.id, row.email);
+  }
 
   // Revenue from paid compras
   const { data: revenueData } = await supabase
@@ -200,9 +210,15 @@ export default async function AdminPage() {
                 </tr>
               </thead>
               <tbody>
-                {(recentPurchases ?? []).map((p) => (
+                {(recentPurchases ?? []).map((p) => {
+                  const bp = p as { buyer_id: string };
+                  const email = emailMap.get(bp.buyer_id) ?? null;
+                  return (
                   <tr key={p.id} className="border-t border-border">
-                    <td className="px-4 py-3 truncate max-w-[140px]">{buyer(p)}</td>
+                    <td className="px-4 py-3 max-w-[160px]">
+                      <p className="truncate font-medium">{buyer(p)}</p>
+                      {email && <p className="truncate text-xs text-muted">{email}</p>}
+                    </td>
                     <td className="px-4 py-3 font-medium">
                       {((p.total_cents ?? 0) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                       <span className="text-muted text-xs ml-1">({p.quantity}x)</span>
@@ -216,7 +232,8 @@ export default async function AdminPage() {
                       {new Date(p.created_at).toLocaleDateString("pt-BR")}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
                 {(recentPurchases ?? []).length === 0 && (
                   <tr><td colSpan={4} className="px-4 py-6 text-center text-sm text-muted">Nenhuma compra ainda.</td></tr>
                 )}

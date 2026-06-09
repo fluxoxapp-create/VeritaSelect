@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { OrganizerShell } from "@/components/organizer-shell";
+import { RaffleOnboardingSteps } from "@/components/raffle-onboarding-steps";
 import { PhotoUpload } from "./photo-upload";
 import { VideoForm } from "./video-form";
 import { savePhotoPaths, saveProofPaths } from "./actions";
@@ -36,6 +37,11 @@ export default async function MidiaPage({
 
   if (!raffle) notFound();
 
+  const { count: prizesCount } = await supabase
+    .from("raffle_prizes")
+    .select("id", { count: "exact", head: true })
+    .eq("raffle_id", id);
+
   const videoValues = {
     video_presentation_url: raffle.video_presentation_url,
     video_25_url: raffle.video_25_url,
@@ -49,6 +55,14 @@ export default async function MidiaPage({
       title={`Mídia — ${raffle.title}`}
       description="Fotos do produto, fotos de comprovação (apenas para análise interna) e vídeos progressivos do YouTube."
     >
+      <RaffleOnboardingSteps
+        raffleId={raffle.id}
+        currentStep={3}
+        hasPrizes={(prizesCount ?? 0) > 0}
+        hasPhotos={(raffle.photo_paths ?? []).length > 0}
+        raffleStatus={raffle.status}
+      />
+
       <div className="max-w-2xl space-y-10">
 
         {/* ── Fotos do produto ── */}

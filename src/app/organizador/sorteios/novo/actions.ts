@@ -100,7 +100,7 @@ export async function createRaffleDraft(_prevState: FormState, formData: FormDat
 
   for (let attempt = 0; attempt < 5; attempt++) {
     const slug = attempt === 0 ? baseSlug : `${baseSlug}-${randomSuffix()}`;
-    const { error } = await supabase.from("raffles").insert({
+    const { data: inserted, error } = await supabase.from("raffles").insert({
       organizer_id: user.id,
       slug,
       title,
@@ -115,9 +115,9 @@ export async function createRaffleDraft(_prevState: FormState, formData: FormDat
       ...(Number.isFinite(minCotasGoal) && minCotasGoal > 0 ? { min_cotas_goal: minCotasGoal } : {}),
       ...(deliveryCity ? { delivery_city: deliveryCity } : {}),
       ...(deliveryUf ? { delivery_uf: deliveryUf } : {}),
-    });
+    }).select("id").single();
 
-    if (!error) redirect("/organizador/sorteios");
+    if (!error && inserted) redirect(`/organizador/sorteios/${inserted.id}/premios`);
 
     if (error.code !== "23505") {
       return { error: "Não foi possível criar a seleção agora. Tente novamente em instantes." };

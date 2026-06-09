@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { OrganizerShell } from "@/components/organizer-shell";
+import { RaffleOnboardingSteps } from "@/components/raffle-onboarding-steps";
 import { PrizesForm } from "./prizes-form";
 import { removePrize } from "./actions";
 
@@ -28,10 +29,10 @@ export default async function PremiosPage({
 
   const { data: raffle } = await supabase
     .from("raffles")
-    .select("id, title, total_cotas, status, draw_method")
+    .select("id, title, total_cotas, status, draw_method, photo_paths")
     .eq("id", id)
     .eq("organizer_id", user.id)
-    .maybeSingle();
+    .maybeSingle() as { data: { id: string; title: string; total_cotas: number; status: string; draw_method: string; photo_paths: string[] | null } | null };
 
   if (!raffle) notFound();
 
@@ -50,6 +51,14 @@ export default async function PremiosPage({
       title={`Prêmios instantâneos — ${raffle.title}`}
       description="Números premiados são adicionais ao sorteio principal. Quem tirar um número premiado ganha o prêmio instantâneo e continua concorrendo ao prêmio principal."
     >
+      <RaffleOnboardingSteps
+        raffleId={raffle.id}
+        currentStep={2}
+        hasPrizes={rows.length > 0}
+        hasPhotos={(raffle.photo_paths ?? []).length > 0}
+        raffleStatus={raffle.status}
+      />
+
       {/* Info card */}
       <div className="rounded-lg border border-gold/20 bg-gold/5 px-5 py-4 text-sm text-muted mb-6 max-w-2xl space-y-1">
         <p className="font-medium text-foreground">Como funcionam os prêmios instantâneos</p>

@@ -3,7 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
-export async function addCategory(formData: FormData) {
+export async function addCategory(
+  _prevState: { error: string | null } | undefined,
+  formData: FormData
+) {
   const name = String(formData.get("name") ?? "").trim();
   const icon = String(formData.get("icon") ?? "🏆").trim();
   const keywords = String(formData.get("keywords") ?? "").trim();

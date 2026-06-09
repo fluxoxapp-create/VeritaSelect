@@ -51,7 +51,7 @@ export default async function AdminSelecaoDetailPage({
   const pct = raffle.total_cotas > 0 ? Math.min(100, Math.round((paidCount / raffle.total_cotas) * 100)) : 0;
 
   function org(): string {
-    const o = Array.isArray(raffle.organizers) ? raffle.organizers[0] : raffle.organizers;
+    const o = Array.isArray(raffle!.organizers) ? raffle!.organizers[0] : raffle!.organizers;
     return (o as { display_name?: string } | null)?.display_name ?? "—";
   }
 

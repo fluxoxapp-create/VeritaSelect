@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { addCategory, toggleCategory, moveCategoryUp, moveCategoryDown } from "./actions";
+import { toggleCategory, moveCategoryUp, moveCategoryDown } from "./actions";
+import { AddCategoryForm } from "./add-category-form";
 
 export default async function AdminCategoriasPage() {
   const supabase = createSupabaseAdminClient();
@@ -97,48 +98,7 @@ export default async function AdminCategoriasPage() {
       {/* Add new */}
       <div className="rounded-xl border border-border bg-surface p-6">
         <h2 className="font-semibold mb-5">Nova categoria</h2>
-        <form action={addCategory} className="space-y-4">
-          <div className="grid sm:grid-cols-3 gap-4">
-            <div className="sm:col-span-1">
-              <label className="text-sm text-muted block mb-1.5">Ícone (emoji)</label>
-              <input
-                type="text"
-                name="icon"
-                defaultValue="🏆"
-                maxLength={4}
-                className="w-full rounded-md border border-border bg-surface-2 px-3 py-2 text-sm outline-none focus:border-gold/60 text-center text-xl"
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="text-sm text-muted block mb-1.5">Nome</label>
-              <input
-                type="text"
-                name="name"
-                required
-                placeholder="Ex.: Aviação"
-                className="w-full rounded-md border border-border bg-surface-2 px-3 py-2 text-sm outline-none focus:border-gold/60"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="text-sm text-muted block mb-1.5">
-              Keywords para foto de capa{" "}
-              <span className="text-xs">(separadas por vírgula — usadas no loremflickr)</span>
-            </label>
-            <input
-              type="text"
-              name="keywords"
-              placeholder="Ex.: airplane,aircraft,aviation"
-              className="w-full rounded-md border border-border bg-surface-2 px-3 py-2 text-sm outline-none focus:border-gold/60"
-            />
-          </div>
-          <button
-            type="submit"
-            className="px-6 py-2 rounded-md bg-gold text-background text-sm font-medium hover:bg-gold-soft transition-colors cursor-pointer"
-          >
-            Adicionar categoria
-          </button>
-        </form>
+        <AddCategoryForm />
       </div>
     </div>
   );

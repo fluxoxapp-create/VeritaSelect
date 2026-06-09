@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-const QTY_OPTIONS = [5, 10, 25, 50];
+const QTY_PRESETS = [5, 10, 25, 50];
+const MAX_PER_PURCHASE = 500;
 
 export function CheckoutSidebar({
   slug,
@@ -19,15 +20,22 @@ export function CheckoutSidebar({
   const router = useRouter();
   const remaining = Math.max(0, totalCotas - soldCotas);
   const pct = totalCotas > 0 ? Math.min(100, Math.round((soldCotas / totalCotas) * 100)) : 0;
+  const maxBuy = Math.min(remaining, MAX_PER_PURCHASE);
 
-  const [quantity, setQuantity] = useState(() => {
-    const defaultQty = QTY_OPTIONS[1] ?? 5;
-    return Math.min(defaultQty, remaining || 1);
-  });
+  const [quantity, setQuantity] = useState(() => Math.min(10, maxBuy || 1));
   const [mode, setMode] = useState<"random" | "manual">("random");
 
   const total = cotaPrice * quantity;
   const soldOut = remaining <= 0;
+
+  function clamp(v: number) {
+    return Math.max(1, Math.min(maxBuy, v));
+  }
+
+  function handleQtyInput(raw: string) {
+    const n = parseInt(raw, 10);
+    if (!isNaN(n)) setQuantity(clamp(n));
+  }
 
   function handleBuy() {
     router.push(`/sorteio/${slug}/comprar?qty=${quantity}&mode=${mode}`);
@@ -49,12 +57,15 @@ export function CheckoutSidebar({
             style={{ width: `${pct}%` }}
           />
         </div>
-        <p className="mt-2 text-xs text-muted">
-          {pct}% dos acessos garantidos
-          {remaining > 0 && (
-            <> · <span className="text-foreground font-medium">{remaining.toLocaleString("pt-BR")}</span> restantes</>
-          )}
-        </p>
+        <div className="mt-2 flex items-center justify-between text-xs text-muted">
+          <span>{pct}% garantidos</span>
+          <span>
+            <span className="text-foreground font-medium">{remaining.toLocaleString("pt-BR")}</span>
+            {" "}de{" "}
+            <span className="text-foreground font-medium">{totalCotas.toLocaleString("pt-BR")}</span>
+            {" "}disponíveis
+          </span>
+        </div>
       </div>
 
       {soldOut ? (
@@ -65,9 +76,9 @@ export function CheckoutSidebar({
         <>
           <div>
             <p className="text-sm font-medium mb-2">Quantidade de acessos</p>
-            <div className="grid grid-cols-4 gap-2">
-              {QTY_OPTIONS.map((qty) => {
-                const disabled = qty > remaining;
+            <div className="grid grid-cols-4 gap-2 mb-3">
+              {QTY_PRESETS.map((qty) => {
+                const disabled = qty > maxBuy;
                 return (
                   <button
                     key={qty}
@@ -87,6 +98,37 @@ export function CheckoutSidebar({
                 );
               })}
             </div>
+
+            {/* Custom quantity input */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setQuantity(clamp(quantity - 1))}
+                disabled={quantity <= 1}
+                className="h-9 w-9 rounded-md border border-border text-lg text-muted hover:border-gold/40 hover:text-foreground transition-colors disabled:opacity-30 cursor-pointer flex items-center justify-center shrink-0"
+              >
+                −
+              </button>
+              <input
+                type="number"
+                min={1}
+                max={maxBuy}
+                value={quantity}
+                onChange={(e) => handleQtyInput(e.target.value)}
+                className="flex-1 rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-center outline-none focus:border-gold/60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+              <button
+                type="button"
+                onClick={() => setQuantity(clamp(quantity + 1))}
+                disabled={quantity >= maxBuy}
+                className="h-9 w-9 rounded-md border border-border text-lg text-muted hover:border-gold/40 hover:text-foreground transition-colors disabled:opacity-30 cursor-pointer flex items-center justify-center shrink-0"
+              >
+                +
+              </button>
+            </div>
+            <p className="text-xs text-muted mt-1.5 text-right">
+              máx. {maxBuy.toLocaleString("pt-BR")} por compra
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-2 text-sm">
@@ -115,7 +157,7 @@ export function CheckoutSidebar({
           </div>
 
           <div className="rounded-lg border border-border bg-surface-2 px-4 py-2.5 flex items-center justify-between text-sm">
-            <span className="text-muted">Total</span>
+            <span className="text-muted">Total ({quantity}× cota)</span>
             <span className="font-semibold text-gold-soft">
               {total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
             </span>
@@ -132,8 +174,8 @@ export function CheckoutSidebar({
       )}
 
       <div className="flex items-center justify-center gap-4 text-xs text-muted">
-        <span className="flex items-center gap-1">🔒 Pagamento protegido</span>
-        <span className="flex items-center gap-1">⚡ Confirmação em segundos</span>
+        <span>🔒 Pagamento protegido</span>
+        <span>⚡ Confirmação em segundos</span>
       </div>
     </div>
   );

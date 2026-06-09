@@ -77,9 +77,17 @@ export default async function AdminSelecaoDetailPage({
           <h1 className="text-2xl font-semibold">{raffle.title}</h1>
           <p className="text-muted text-sm mt-1">Organizador: {org()}</p>
         </div>
-        <Link href="/admin/selecoes" className="text-sm text-muted hover:text-foreground transition-colors shrink-0">
-          ← Seleções
-        </Link>
+        <div className="flex items-center gap-3 shrink-0">
+          <Link
+            href={`/admin/selecoes/${id}/compras`}
+            className="text-sm px-3 py-1.5 rounded-md border border-border text-muted hover:border-gold/40 hover:text-foreground transition-colors"
+          >
+            Compras →
+          </Link>
+          <Link href="/admin/selecoes" className="text-sm text-muted hover:text-foreground transition-colors">
+            ← Seleções
+          </Link>
+        </div>
       </div>
 
       {/* Sales KPIs */}

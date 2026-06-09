@@ -4,6 +4,7 @@ const LINKS = [
   { href: "/organizador", label: "Visão geral" },
   { href: "/organizador/solicitar", label: "Solicitar verificação" },
   { href: "/organizador/sorteios", label: "Minhas seleções" },
+  { href: "/organizador/kyc", label: "Verificação de identidade" },
 ];
 
 export function OrganizerShell({

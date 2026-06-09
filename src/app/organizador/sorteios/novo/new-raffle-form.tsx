@@ -17,6 +17,15 @@ const UF_LIST = [
 const LOTTERY_COMPATIBLE = [100, 1_000, 10_000, 100_000] as const;
 const LOTTERY_DIGITS: Record<number, number> = { 100: 2, 1000: 3, 10000: 4, 100000: 5 };
 
+// Common price presets for diversified access pricing
+const PRICE_PRESETS = [
+  { label: "R$0,29", cents: 29 },
+  { label: "R$0,59", cents: 59 },
+  { label: "R$1,30", cents: 130 },
+  { label: "R$2,50", cents: 250 },
+  { label: "R$5,00", cents: 500 },
+] as const;
+
 function getLotteryDigits(qty: number): number | null {
   return LOTTERY_DIGITS[qty] ?? null;
 }
@@ -284,6 +293,22 @@ export function NewRaffleForm({ categories }: { categories: { name: string; icon
             </div>
             <div>
               <label className={labelClass}>Valor de cada acesso (R$)</label>
+              <div className="grid grid-cols-5 gap-1.5 mb-2">
+                {PRICE_PRESETS.map((p) => (
+                  <button
+                    key={p.cents}
+                    type="button"
+                    onClick={() => setCotaPriceRaw((p.cents / 100).toFixed(2).replace(".", ","))}
+                    className={`py-2 rounded-md border text-xs font-medium transition-colors cursor-pointer ${
+                      cotaPriceCents === p.cents
+                        ? "border-gold bg-gold/10 text-gold-soft"
+                        : "border-border text-muted hover:border-gold/40 hover:text-foreground"
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
               <input
                 type="text"
                 name="cotaPrice"

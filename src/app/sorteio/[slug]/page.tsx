@@ -2,8 +2,21 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { coverImage } from "@/lib/cover-image";
-import { getRaffleBySlug } from "@/lib/data/raffles";
+import { getRaffleBySlug, progress } from "@/lib/data/raffles";
 import { CheckoutSidebar } from "./checkout-sidebar";
+
+function getMilestoneVideo(raffle: {
+  soldCotas: number; totalCotas: number;
+  videoPresentation: string | null; video25: string | null;
+  video50: string | null; video75: string | null; video100: string | null;
+}): string | null {
+  const pct = raffle.totalCotas > 0 ? (raffle.soldCotas / raffle.totalCotas) * 100 : 0;
+  if (pct >= 100 && raffle.video100) return raffle.video100;
+  if (pct >= 75 && raffle.video75) return raffle.video75;
+  if (pct >= 50 && raffle.video50) return raffle.video50;
+  if (pct >= 25 && raffle.video25) return raffle.video25;
+  return raffle.videoPresentation;
+}
 
 export default async function RafflePage({
   params,
@@ -13,6 +26,15 @@ export default async function RafflePage({
   const { slug } = await params;
   const raffle = await getRaffleBySlug(slug);
   if (!raffle) notFound();
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const hasPhotos = raffle.photoPaths.length > 0;
+  const activeVideo = getMilestoneVideo(raffle);
+  const pct = progress(raffle);
+
+  function photoUrl(path: string) {
+    return `${supabaseUrl}/storage/v1/object/public/raffle-photos/${path}`;
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10 pb-28 lg:pb-10">
@@ -26,37 +48,92 @@ export default async function RafflePage({
 
       <div className="grid lg:grid-cols-3 gap-10">
         <div className="lg:col-span-2 space-y-8">
-          {/* Galeria */}
-          <div className="space-y-3">
-            <div className="relative rounded-xl border border-border overflow-hidden h-72 sm:h-96 bg-surface-2">
-              <Image
-                src={coverImage(raffle, 0)}
-                alt={raffle.title}
-                fill
-                priority
-                sizes="(max-width: 1024px) 100vw, 66vw"
-                className="object-cover"
-              />
-            </div>
-            <div className="grid grid-cols-4 gap-2 sm:gap-3">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div
-                  key={i}
-                  className={`relative h-14 sm:h-20 rounded-lg border overflow-hidden bg-surface ${
-                    i === 0 ? "border-gold/60" : "border-border opacity-60"
-                  }`}
-                >
-                  <Image
-                    src={coverImage(raffle, i + 1)}
-                    alt=""
-                    fill
-                    sizes="120px"
-                    className="object-cover"
-                  />
+
+          {/* Galeria de fotos */}
+          {hasPhotos ? (
+            <div className="space-y-3">
+              <div className="relative rounded-xl border border-border overflow-hidden h-72 sm:h-96 bg-surface-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={photoUrl(raffle.photoPaths[0])}
+                  alt={raffle.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              {raffle.photoPaths.length > 1 && (
+                <div className="grid grid-cols-4 gap-2 sm:gap-3">
+                  {raffle.photoPaths.slice(1, 5).map((path, i) => (
+                    <div
+                      key={path}
+                      className={`relative h-14 sm:h-20 rounded-lg border overflow-hidden bg-surface ${
+                        i === 0 ? "border-gold/60" : "border-border opacity-80"
+                      }`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={photoUrl(path)}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          </div>
+          ) : (
+            /* Fallback: cover image gerada */
+            <div className="space-y-3">
+              <div className="relative rounded-xl border border-border overflow-hidden h-72 sm:h-96 bg-surface-2">
+                <Image
+                  src={coverImage(raffle, 0)}
+                  alt={raffle.title}
+                  fill
+                  priority
+                  sizes="(max-width: 1024px) 100vw, 66vw"
+                  className="object-cover"
+                />
+              </div>
+              <div className="grid grid-cols-4 gap-2 sm:gap-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={`relative h-14 sm:h-20 rounded-lg border overflow-hidden bg-surface ${
+                      i === 0 ? "border-gold/60" : "border-border opacity-60"
+                    }`}
+                  >
+                    <Image
+                      src={coverImage(raffle, i + 1)}
+                      alt=""
+                      fill
+                      sizes="120px"
+                      className="object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Vídeo do marco atual */}
+          {activeVideo && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold">Vídeo da seleção</p>
+                <span className="text-xs text-muted border border-border rounded-full px-2 py-0.5">
+                  {pct >= 100 ? "Encerrada" : pct >= 75 ? "75%+" : pct >= 50 ? "50%+" : pct >= 25 ? "25%+" : "Apresentação"}
+                </span>
+              </div>
+              <div className="relative rounded-xl overflow-hidden bg-black aspect-video">
+                <iframe
+                  src={`${activeVideo}?rel=0&modestbranding=1`}
+                  title="Vídeo da seleção"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="absolute inset-0 w-full h-full"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Cabeçalho */}
           <div>

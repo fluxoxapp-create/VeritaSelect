@@ -46,13 +46,25 @@ export default async function RaffleComprasPage({
 
   const admin = createSupabaseAdminClient();
 
+  // Load raffle + organizer info
   const { data: raffle } = await admin
     .from("raffles")
-    .select("id, title, status, total_cotas")
+    .select("id, title, status, total_cotas, created_at, draw_date, organizers(display_name)")
     .eq("id", raffleId)
-    .maybeSingle();
+    .maybeSingle() as {
+      data: {
+        id: string; title: string; status: string; total_cotas: number;
+        created_at: string; draw_date: string;
+        organizers: { display_name: string } | { display_name: string }[] | null;
+      } | null;
+    };
 
   if (!raffle) notFound();
+
+  const organizerName = (() => {
+    if (!raffle.organizers) return "—";
+    return (Array.isArray(raffle.organizers) ? raffle.organizers[0] : raffle.organizers).display_name;
+  })();
 
   // ── Search: resolve matching compra IDs ─────────────────────────────────
   const trimmed = q.trim();
@@ -61,7 +73,6 @@ export default async function RaffleComprasPage({
   if (trimmed) {
     const isNumeric = /^\d+$/.test(trimmed);
     if (isNumeric) {
-      // Search by cota number
       const { data: numRows } = await admin
         .from("raffle_numbers")
         .select("purchase_id")
@@ -75,8 +86,8 @@ export default async function RaffleComprasPage({
         .from("profiles")
         .select("id")
         .ilike("full_name", `%${trimmed}%`);
-
       const profileIds = (profileRows ?? []).map((p) => p.id);
+
       let byName: string[] = [];
       if (profileIds.length) {
         const { data: nameMatches } = await admin
@@ -87,7 +98,7 @@ export default async function RaffleComprasPage({
         byName = (nameMatches ?? []).map((c) => c.id);
       }
 
-      // Also search by purchase ID prefix (hex chars)
+      // Also search by purchase ID prefix
       let byId: string[] = [];
       if (/^[0-9a-fA-F-]+$/.test(trimmed)) {
         const { data: idMatches } = await admin
@@ -104,13 +115,14 @@ export default async function RaffleComprasPage({
 
   // ── Main compras query ───────────────────────────────────────────────────
   type CompraRow = {
-    id: string; status: string; quantity: number; total_cents: number; created_at: string;
+    id: string; buyer_id: string; status: string;
+    quantity: number; total_cents: number; created_at: string;
     profiles: { full_name?: string } | { full_name?: string }[] | null;
   };
 
   let query = admin
     .from("compras")
-    .select("id, status, quantity, total_cents, created_at, profiles!compras_buyer_id_fkey(full_name)", { count: "exact" })
+    .select("id, buyer_id, status, quantity, total_cents, created_at, profiles!compras_buyer_id_fkey(full_name)", { count: "exact" })
     .eq("raffle_id", raffleId)
     .order("created_at", { ascending: false });
 
@@ -124,6 +136,18 @@ export default async function RaffleComprasPage({
   const { data: comprasRaw, count } = await query.range(offset, offset + PAGE_SIZE - 1);
   const compras = (comprasRaw ?? []) as CompraRow[];
   const totalPages = Math.ceil((count ?? 0) / PAGE_SIZE);
+
+  // ── Fetch buyer emails via SECURITY DEFINER function ────────────────────
+  const buyerIds = [...new Set(compras.map((c) => c.buyer_id))];
+  const emailMap = new Map<string, string>();
+  if (buyerIds.length) {
+    const { data: emailRows } = await admin.rpc("get_buyer_emails", { buyer_ids: buyerIds }) as {
+      data: { id: string; email: string }[] | null;
+    };
+    for (const row of emailRows ?? []) {
+      emailMap.set(row.id, row.email);
+    }
+  }
 
   // ── Load cota numbers for this page ─────────────────────────────────────
   const compraIds = compras.map((c) => c.id);
@@ -143,7 +167,7 @@ export default async function RaffleComprasPage({
     numbersByPurchase.set(r.purchase_id, arr);
   }
 
-  // ── KPIs (full raffle scope, not filtered) ───────────────────────────────
+  // ── KPIs ─────────────────────────────────────────────────────────────────
   const { data: allCompras } = await admin
     .from("compras")
     .select("status, total_cents")
@@ -157,7 +181,6 @@ export default async function RaffleComprasPage({
     .reduce((a, c) => a + (c.total_cents ?? 0), 0);
   const pendingCount = (allCompras ?? []).filter((c) => c.status === "pending_payment").length;
 
-  // ── Build pagination URLs ────────────────────────────────────────────────
   function pageUrl(p: number) {
     const params = new URLSearchParams();
     if (trimmed) params.set("q", trimmed);
@@ -171,16 +194,21 @@ export default async function RaffleComprasPage({
     <div className="mx-auto max-w-5xl px-6 py-10 space-y-8">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs text-muted mb-1">Seleção</p>
+        <div className="space-y-1">
+          <p className="text-xs text-muted">Compras por seleção</p>
           <h1 className="text-2xl font-semibold">{raffle.title}</h1>
-          <p className="text-muted text-sm mt-1">Compras e estornos desta seleção</p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
+            <span>Organizador: <span className="text-foreground">{organizerName}</span></span>
+            <span>Criada em: <span className="text-foreground">{new Date(raffle.created_at).toLocaleDateString("pt-BR")}</span></span>
+            <span>Apuração: <span className="text-foreground">{new Date(raffle.draw_date).toLocaleDateString("pt-BR")}</span></span>
+            <span>Total de cotas: <span className="text-foreground">{raffle.total_cotas.toLocaleString("pt-BR")}</span></span>
+          </div>
         </div>
         <Link
-          href={`/admin/selecoes/${raffleId}`}
+          href="/admin/compras"
           className="text-sm text-muted hover:text-foreground transition-colors shrink-0"
         >
-          ← Seleção
+          ← Compras
         </Link>
       </div>
 
@@ -207,7 +235,6 @@ export default async function RaffleComprasPage({
         <SearchFilter currentQ={trimmed} currentStatus={rawStatus ?? "all"} />
       </Suspense>
 
-      {/* Results count */}
       {trimmed && (
         <p className="text-sm text-muted">
           {count ?? 0} resultado{(count ?? 0) !== 1 ? "s" : ""} para &ldquo;{trimmed}&rdquo;
@@ -236,6 +263,7 @@ export default async function RaffleComprasPage({
                 const profile = (
                   Array.isArray(row.profiles) ? row.profiles[0] : row.profiles
                 ) as { full_name?: string } | null;
+                const email = emailMap.get(row.buyer_id) ?? null;
                 const numbers = numbersByPurchase.get(row.id) ?? [];
                 return (
                   <tr key={row.id} className="border-t border-border align-middle hover:bg-surface-2/40 transition-colors">
@@ -243,10 +271,13 @@ export default async function RaffleComprasPage({
                       {row.id.slice(0, 8).toUpperCase()}
                     </td>
                     <td className="px-5 py-3">
-                      <p className="font-medium truncate max-w-[160px]">
+                      <p className="font-medium truncate max-w-[180px]">
                         {profile?.full_name ?? "—"}
                       </p>
-                      <p className="text-xs text-muted">{row.quantity} cota{row.quantity !== 1 ? "s" : ""}</p>
+                      {email && (
+                        <p className="text-xs text-muted truncate max-w-[180px]">{email}</p>
+                      )}
+                      <p className="text-xs text-muted/60">{row.quantity} cota{row.quantity !== 1 ? "s" : ""}</p>
                     </td>
                     <td className="px-5 py-3 hidden lg:table-cell text-muted text-xs font-mono">
                       {formatNumbers(numbers)}

@@ -13,6 +13,12 @@ export type Raffle = {
   soldCotas: number;
   drawDate: string;
   description: string;
+  photoPaths: string[];
+  videoPresentation: string | null;
+  video25: string | null;
+  video50: string | null;
+  video75: string | null;
+  video100: string | null;
 };
 
 type RafflePublicRow = {
@@ -26,6 +32,12 @@ type RafflePublicRow = {
   sold_cotas: number;
   draw_date: string;
   description: string;
+  photo_paths: string[] | null;
+  video_presentation_url: string | null;
+  video_25_url: string | null;
+  video_50_url: string | null;
+  video_75_url: string | null;
+  video_100_url: string | null;
 };
 
 function mapRaffle(row: RafflePublicRow): Raffle {
@@ -40,6 +52,12 @@ function mapRaffle(row: RafflePublicRow): Raffle {
     soldCotas: row.sold_cotas,
     drawDate: row.draw_date,
     description: row.description,
+    photoPaths: row.photo_paths ?? [],
+    videoPresentation: row.video_presentation_url ?? null,
+    video25: row.video_25_url ?? null,
+    video50: row.video_50_url ?? null,
+    video75: row.video_75_url ?? null,
+    video100: row.video_100_url ?? null,
   };
 }
 
@@ -49,7 +67,7 @@ export async function getPublishedRaffles(): Promise<Raffle[]> {
   const { data, error } = await supabase
     .from("raffles_public")
     .select(
-      "slug, title, category, organizer_name, organizer_verified, cota_price_cents, total_cotas, sold_cotas, draw_date, description",
+      "slug, title, category, organizer_name, organizer_verified, cota_price_cents, total_cotas, sold_cotas, draw_date, description, photo_paths, video_presentation_url, video_25_url, video_50_url, video_75_url, video_100_url",
     )
     .order("draw_date", { ascending: true });
 
@@ -62,7 +80,7 @@ export async function getRaffleBySlug(slug: string): Promise<Raffle | null> {
   const { data, error } = await supabase
     .from("raffles_public")
     .select(
-      "slug, title, category, organizer_name, organizer_verified, cota_price_cents, total_cotas, sold_cotas, draw_date, description",
+      "slug, title, category, organizer_name, organizer_verified, cota_price_cents, total_cotas, sold_cotas, draw_date, description, photo_paths, video_presentation_url, video_25_url, video_50_url, video_75_url, video_100_url",
     )
     .eq("slug", slug)
     .maybeSingle();

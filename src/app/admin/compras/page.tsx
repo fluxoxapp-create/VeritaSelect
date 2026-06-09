@@ -2,66 +2,65 @@ import Link from "next/link";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const STATUS_LABEL: Record<string, string> = {
-  pending_payment: "Aguardando", paid: "Pago", cancelled: "Cancelado",
-  refunded: "Estornado", expired: "Expirado",
+  draft: "Rascunho", pending_review: "Em análise",
+  published: "Publicada", paused: "Pausada",
+  drawing: "Apuração", completed: "Concluída", cancelled: "Cancelada",
 };
 const STATUS_COLOR: Record<string, string> = {
-  paid: "text-emerald-300 border-emerald-400/40",
-  pending_payment: "text-amber-300 border-amber-400/40",
-  refunded: "text-blue-300 border-blue-400/40",
+  published: "text-emerald-300 border-emerald-400/40",
+  completed: "text-blue-300 border-blue-400/40",
+  pending_review: "text-amber-300 border-amber-400/40",
+  paused: "text-amber-300 border-amber-400/40",
+  drawing: "text-gold-soft border-gold/40",
+  draft: "text-muted border-border",
   cancelled: "text-red-400 border-red-400/40",
-  expired: "text-muted border-border",
 };
 
-const VALID_FILTERS = ["all", "paid", "pending_payment", "refunded", "cancelled"] as const;
-type Filter = (typeof VALID_FILTERS)[number];
+const fmtBrl = (c: number) =>
+  (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-export default async function AdminComprasPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ status?: string; page?: string }>;
-}) {
-  const { status: rawStatus, page: rawPage } = await searchParams;
-  const filter: Filter = VALID_FILTERS.includes(rawStatus as Filter) ? (rawStatus as Filter) : "all";
-  const page = Math.max(1, parseInt(rawPage ?? "1", 10));
-  const pageSize = 50;
-  const offset = (page - 1) * pageSize;
-
+export default async function AdminComprasPage() {
   const admin = createSupabaseAdminClient();
 
-  let query = admin
+  // All raffles with organizer name
+  const { data: rafflesRaw } = await admin
+    .from("raffles")
+    .select("id, title, status, created_at, draw_date, total_cotas, organizers(display_name)")
+    .order("created_at", { ascending: false });
+
+  // All compras aggregated — status + total_cents per raffle_id
+  const { data: allCompras } = await admin
     .from("compras")
-    .select(`
-      id, status, quantity, total_cents, created_at,
-      raffles(title),
-      profiles!compras_buyer_id_fkey(full_name)
-    `, { count: "exact" })
-    .order("created_at", { ascending: false })
-    .range(offset, offset + pageSize - 1);
+    .select("raffle_id, status, total_cents");
 
-  if (filter !== "all") query = query.eq("status", filter);
+  // Build per-raffle stats map
+  type Stats = { paid: number; revenue: number; refunded: number; pending: number };
+  const statsMap = new Map<string, Stats>();
+  for (const c of allCompras ?? []) {
+    const s = statsMap.get(c.raffle_id) ?? { paid: 0, revenue: 0, refunded: 0, pending: 0 };
+    if (c.status === "paid") { s.paid++; s.revenue += c.total_cents ?? 0; }
+    if (c.status === "refunded") s.refunded += c.total_cents ?? 0;
+    if (c.status === "pending_payment") s.pending++;
+    statsMap.set(c.raffle_id, s);
+  }
 
-  const { data: rows, count } = await query;
-  const total = count ?? 0;
-  const totalPages = Math.ceil(total / pageSize);
+  const raffles = (rafflesRaw ?? []).map((r) => ({
+    ...r,
+    organizer: (Array.isArray(r.organizers) ? r.organizers[0] : r.organizers) as { display_name: string } | null,
+    stats: statsMap.get(r.id) ?? { paid: 0, revenue: 0, refunded: 0, pending: 0 },
+  }));
 
-  // Summary totals
-  const { data: summary } = await admin
-    .from("compras")
-    .select("status, total_cents");
-
-  const paid = (summary ?? []).filter((r) => r.status === "paid").reduce((a, r) => a + (r.total_cents ?? 0), 0);
-  const refunded = (summary ?? []).filter((r) => r.status === "refunded").reduce((a, r) => a + (r.total_cents ?? 0), 0);
-  const pending = (summary ?? []).filter((r) => r.status === "pending_payment").length;
-
-  const fmtBrl = (c: number) => (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  // Platform-wide KPIs
+  const totalRevenue = [...statsMap.values()].reduce((a, s) => a + s.revenue, 0);
+  const totalRefunded = [...statsMap.values()].reduce((a, s) => a + s.refunded, 0);
+  const totalPending = [...statsMap.values()].reduce((a, s) => a + s.pending, 0);
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10 space-y-8">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Compras</h1>
-          <p className="text-muted text-sm mt-1">Área financeira — todas as transações da plataforma.</p>
+          <h1 className="text-2xl font-semibold">Compras por seleção</h1>
+          <p className="text-muted text-sm mt-1">Clique em uma seleção para ver compradores, cotas e estornos.</p>
         </div>
         <Link href="/admin" className="text-sm text-muted hover:text-foreground transition-colors">
           ← Painel
@@ -71,9 +70,9 @@ export default async function AdminComprasPage({
       {/* KPIs */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: "Receita confirmada", value: fmtBrl(paid), color: "text-emerald-300" },
-          { label: "Estornos", value: fmtBrl(refunded), color: "text-blue-300" },
-          { label: "Aguardando pagamento", value: String(pending), color: "text-amber-300" },
+          { label: "Receita confirmada", value: fmtBrl(totalRevenue), color: "text-emerald-300" },
+          { label: "Estornos realizados", value: fmtBrl(totalRefunded), color: "text-blue-300" },
+          { label: "Aguardando pagamento", value: String(totalPending), color: "text-amber-300" },
         ].map((k) => (
           <div key={k.label} className="rounded-xl border border-border bg-surface p-4">
             <p className="text-xs text-muted">{k.label}</p>
@@ -82,92 +81,72 @@ export default async function AdminComprasPage({
         ))}
       </div>
 
-      {/* Filter tabs */}
-      <div className="flex gap-2 flex-wrap text-sm">
-        {(["all", "paid", "pending_payment", "refunded", "cancelled"] as const).map((s) => (
-          <Link
-            key={s}
-            href={`/admin/compras${s === "all" ? "" : `?status=${s}`}`}
-            className={`px-3 py-1.5 rounded-md border transition-colors ${
-              filter === s
-                ? "border-gold/60 bg-gold/10 text-gold-soft"
-                : "border-border text-muted hover:border-gold/40 hover:text-foreground"
-            }`}
-          >
-            {s === "all" ? "Todas" : STATUS_LABEL[s]}
-          </Link>
-        ))}
-      </div>
+      {/* Raffle cards */}
+      {raffles.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-border bg-surface p-10 text-center text-sm text-muted">
+          Nenhuma seleção cadastrada.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {raffles.map((raffle) => (
+            <Link
+              key={raffle.id}
+              href={`/admin/selecoes/${raffle.id}/compras`}
+              className="group block rounded-xl border border-border bg-surface hover:border-gold/40 hover:bg-surface-2/40 transition-colors p-5"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                {/* Left: title + organizer + dates */}
+                <div className="min-w-0 space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="font-semibold group-hover:text-gold-soft transition-colors truncate">
+                      {raffle.title}
+                    </h2>
+                    <span className={`text-xs px-2 py-0.5 rounded-full border shrink-0 ${STATUS_COLOR[raffle.status] ?? "text-muted border-border"}`}>
+                      {STATUS_LABEL[raffle.status] ?? raffle.status}
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted">
+                    Organizador: <span className="text-foreground">{raffle.organizer?.display_name ?? "—"}</span>
+                  </p>
+                  <p className="text-xs text-muted">
+                    Criada em{" "}
+                    {new Date(raffle.created_at).toLocaleDateString("pt-BR")}
+                    {" · "}
+                    Apuração em{" "}
+                    {new Date(raffle.draw_date).toLocaleDateString("pt-BR")}
+                  </p>
+                </div>
 
-      {/* Table */}
-      <div className="rounded-xl border border-border bg-surface overflow-hidden">
-        {(rows ?? []).length === 0 ? (
-          <p className="p-8 text-center text-sm text-muted">Nenhuma compra encontrada.</p>
-        ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-surface-2 text-muted text-xs uppercase tracking-wide">
-              <tr>
-                <th className="text-left font-medium px-5 py-3">ID</th>
-                <th className="text-left font-medium px-5 py-3 hidden sm:table-cell">Comprador</th>
-                <th className="text-left font-medium px-5 py-3 hidden md:table-cell">Seleção</th>
-                <th className="text-left font-medium px-5 py-3">Valor</th>
-                <th className="text-left font-medium px-5 py-3">Status</th>
-                <th className="text-left font-medium px-5 py-3 hidden sm:table-cell">Data</th>
-                <th className="px-5 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {(rows ?? []).map((row) => {
-                const raffle = Array.isArray(row.raffles) ? row.raffles[0] : row.raffles as { title?: string } | null;
-                const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles as { full_name?: string } | null;
-                return (
-                  <tr key={row.id} className="border-t border-border hover:bg-surface-2/50 transition-colors">
-                    <td className="px-5 py-3 font-mono text-xs text-muted">{row.id.slice(0, 8).toUpperCase()}</td>
-                    <td className="px-5 py-3 hidden sm:table-cell">{profile?.full_name ?? "—"}</td>
-                    <td className="px-5 py-3 hidden md:table-cell text-muted truncate max-w-[200px]">{raffle?.title ?? "—"}</td>
-                    <td className="px-5 py-3 font-medium">{fmtBrl(row.total_cents)}</td>
-                    <td className="px-5 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full border ${STATUS_COLOR[row.status] ?? "border-border text-muted"}`}>
-                        {STATUS_LABEL[row.status] ?? row.status}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 hidden sm:table-cell text-muted text-xs">
-                      {new Date(row.created_at).toLocaleDateString("pt-BR")}
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      <Link
-                        href={`/admin/compras/${row.id}`}
-                        className="text-xs text-muted hover:text-gold-soft transition-colors"
-                      >
-                        Ver →
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-center gap-2 text-sm">
-          {page > 1 && (
-            <Link href={`/admin/compras?${filter !== "all" ? `status=${filter}&` : ""}page=${page - 1}`}
-              className="px-3 py-1.5 rounded-md border border-border text-muted hover:border-gold/40 hover:text-foreground transition-colors">
-              ← Anterior
+                {/* Right: stats */}
+                <div className="flex items-center gap-6 shrink-0">
+                  <div className="text-right">
+                    <p className="text-xs text-muted">Cotas vendidas</p>
+                    <p className="font-semibold text-emerald-300 tabular-nums">
+                      {raffle.stats.paid.toLocaleString("pt-BR")}
+                      <span className="text-muted font-normal text-xs">/{raffle.total_cotas.toLocaleString("pt-BR")}</span>
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-muted">Receita</p>
+                    <p className="font-semibold tabular-nums">{fmtBrl(raffle.stats.revenue)}</p>
+                  </div>
+                  {raffle.stats.refunded > 0 && (
+                    <div className="text-right">
+                      <p className="text-xs text-muted">Estornos</p>
+                      <p className="font-semibold text-blue-300 tabular-nums">{fmtBrl(raffle.stats.refunded)}</p>
+                    </div>
+                  )}
+                  {raffle.stats.pending > 0 && (
+                    <div className="text-right">
+                      <p className="text-xs text-muted">Pendentes</p>
+                      <p className="font-semibold text-amber-300 tabular-nums">{raffle.stats.pending}</p>
+                    </div>
+                  )}
+                  <span className="text-muted text-sm group-hover:text-gold-soft transition-colors">→</span>
+                </div>
+              </div>
             </Link>
-          )}
-          <span className="px-3 py-1.5 text-muted">
-            {page} / {totalPages}
-          </span>
-          {page < totalPages && (
-            <Link href={`/admin/compras?${filter !== "all" ? `status=${filter}&` : ""}page=${page + 1}`}
-              className="px-3 py-1.5 rounded-md border border-border text-muted hover:border-gold/40 hover:text-foreground transition-colors">
-              Próxima →
-            </Link>
-          )}
+          ))}
         </div>
       )}
     </div>

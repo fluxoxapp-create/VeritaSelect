@@ -88,6 +88,12 @@ export default async function MinhasSelecoesPage() {
                   </td>
                   <td className="px-5 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
+                      <Link
+                        href={`/organizador/sorteios/${raffle.id}/midia`}
+                        className="text-xs px-3 py-1.5 rounded-md border border-border text-muted hover:border-gold/40 hover:text-foreground transition-colors"
+                      >
+                        Mídia
+                      </Link>
                       {raffle.status === "draft" && (
                         <Link
                           href={`/organizador/sorteios/${raffle.id}/premios`}

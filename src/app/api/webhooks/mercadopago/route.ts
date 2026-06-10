@@ -6,6 +6,7 @@ import {
   verifyMercadoPagoWebhookSignature,
   MercadoPagoApiError,
 } from "@/lib/payments/mercadopago";
+import { sendPurchaseReceiptForCompra } from "@/lib/email/purchase-receipt";
 
 /**
  * Mercado Pago Pix payment notification handler.
@@ -257,6 +258,17 @@ export async function POST(request: Request) {
   }
 
   await markProcessed(eventRowId, "confirmed");
+
+  // Best-effort purchase receipt — failures here must never turn a confirmed
+  // payment into a webhook retry (Mercado Pago would re-deliver and
+  // confirm_purchase_payment is a no-op on an already-paid compra anyway,
+  // but there's no reason to risk it for a non-critical email).
+  try {
+    await sendPurchaseReceiptForCompra(admin, pagamento.compra_id as string);
+  } catch (err) {
+    console.error("[webhook] falha ao enviar recibo de compra:", err);
+  }
+
   return NextResponse.json({ received: true }, { status: 200 });
 }
 

@@ -1,36 +1,41 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Verita Select · DealBridge
 
-## Getting Started
+Marketplace B2B que conecta empresas que querem vender a parceiros comerciais autônomos que indicam clientes.
 
-First, run the development server:
+A empresa publica uma campanha com a comissão que paga. O parceiro escolhe onde atuar, prospecta e registra a indicação. A empresa aprova. A comissão é paga **direto ao parceiro** — a plataforma não toca no dinheiro e cobra apenas da empresa, em fatura mensal.
+
+> **veritaselect.com.br**
+
+---
+
+## Rodando local
 
 ```bash
+npm install
+cp .env.example .env.local   # preencha as chaves
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`http://localhost:3000`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Script | O quê |
+|---|---|
+| `npm run dev` | Servidor de desenvolvimento (Turbopack) |
+| `npm run build` | Build de produção |
+| `npm run start` | Sobe o build |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | `tsc --noEmit` |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Banco
 
-## Learn More
+Migrations em `supabase/migrations/`, aplicadas em ordem. A `0021_dealbridge_core.sql` derruba o domínio anterior (sorteios) e cria o esquema do DealBridge; da `0022` em diante é histórico normal.
 
-To learn more about Next.js, take a look at the following resources:
+## Antes de escrever código
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. `AGENTS.md` — as seis linhas vermelhas jurídicas e as convenções técnicas que saem delas. Não são preferência de estilo.
+2. `node_modules/next/dist/docs/` — este projeto roda Next.js 16, que quebra APIs que você provavelmente tem na memória.
+3. `juridico/` e `docs/ROADMAP.md` — o que a plataforma pode e não pode fazer, e em que ordem.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Status
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Fase 1 — Esqueleto.** A Fase 0 (CNPJ, revisão dos contratos por advogado, DPO indicado, faixas de taxa) segue aberta; os placeholders jurídicos aparecem marcados na interface de propósito.

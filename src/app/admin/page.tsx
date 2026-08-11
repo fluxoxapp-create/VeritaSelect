@@ -1,248 +1,193 @@
 import Link from "next/link";
 import { logoutAdmin } from "./actions";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { Card, Pill } from "@/components/ui";
+import { formatCents, formatDataHora } from "@/lib/format";
+
+export const metadata = { title: "Painel admin" };
+
+type EventoAuditoria = {
+  id: number;
+  action: string;
+  actor_role: string | null;
+  actor_ip: string | null;
+  created_at: string;
+  target_table: string | null;
+};
 
 export default async function AdminPage() {
   const supabase = createSupabaseAdminClient();
 
   const [
-    { count: pendingOrganizers },
-    { count: pendingRaffles },
-    { count: totalUsers },
-    { count: totalOrganizers },
-    { count: totalPublished },
-    { count: totalPaused },
-    { count: totalCompleted },
-    { data: recentPurchases },
-    { data: allRaffles },
+    { count: habilitacoesPendentes },
+    { count: kybPendentes },
+    { count: disputasAbertas },
+    { count: denunciasAbertas },
+    { count: totalParceiros },
+    { count: totalEmpresas },
+    { count: campanhasPublicadas },
+    { count: faixasDefinidas },
+    { data: aprovadas },
+    { data: auditoria },
   ] = await Promise.all([
-    supabase.from("organizers").select("id", { count: "exact", head: true }).eq("kyc_status", "pending"),
-    supabase.from("raffles").select("id", { count: "exact", head: true }).eq("status", "pending_review"),
-    supabase.from("profiles").select("id", { count: "exact", head: true }),
-    supabase.from("organizers").select("id", { count: "exact", head: true }).eq("kyc_status", "approved"),
-    supabase.from("raffles").select("id", { count: "exact", head: true }).eq("status", "published"),
-    supabase.from("raffles").select("id", { count: "exact", head: true }).eq("status", "paused"),
-    supabase.from("raffles").select("id", { count: "exact", head: true }).eq("status", "completed"),
-    supabase.from("compras")
-      .select("id, buyer_id, quantity, total_cents, status, created_at, profiles!compras_buyer_id_fkey(full_name)")
+    supabase.from("habilitacoes").select("id", { count: "exact", head: true }).eq("status", "pendente"),
+    supabase.from("empresas").select("id", { count: "exact", head: true }).eq("kyb_status", "pendente"),
+    supabase.from("disputas").select("id", { count: "exact", head: true }).is("decidida_em", null),
+    supabase.from("denuncias").select("id", { count: "exact", head: true }).eq("status", "aberta"),
+    supabase.from("parceiros").select("id", { count: "exact", head: true }),
+    supabase.from("empresas").select("id", { count: "exact", head: true }),
+    supabase.from("campanhas").select("id", { count: "exact", head: true }).eq("status", "publicada"),
+    supabase.from("faixas_taxa").select("id", { count: "exact", head: true }),
+    supabase.from("indicacoes").select("comissao_cents, taxa_cents").in("status", ["aprovada", "paga"]),
+    supabase
+      .from("audit_log")
+      .select("id, action, actor_role, actor_ip, created_at, target_table")
       .order("created_at", { ascending: false })
-      .limit(10),
-    supabase.from("raffles")
-      .select("id, slug, title, status, total_cotas, draw_date, organizers!raffles_organizer_id_fkey(display_name)")
-      .order("created_at", { ascending: false })
-      .limit(50),
+      .limit(15),
   ]);
 
-  // Buyer emails for recent purchases
-  const buyerIds = [...new Set((recentPurchases ?? []).map((p) => (p as { buyer_id: string }).buyer_id).filter(Boolean))];
-  const emailMap = new Map<string, string>();
-  if (buyerIds.length) {
-    const { data: emailRows } = await supabase.rpc("get_buyer_emails", { buyer_ids: buyerIds }) as {
-      data: { id: string; email: string }[] | null;
-    };
-    for (const row of emailRows ?? []) emailMap.set(row.id, row.email);
-  }
+  const comissaoMovimentada = (aprovadas ?? []).reduce(
+    (s, r) => s + ((r.comissao_cents as number) ?? 0),
+    0,
+  );
+  const taxaApurada = (aprovadas ?? []).reduce((s, r) => s + ((r.taxa_cents as number) ?? 0), 0);
+  const semFaixa = (aprovadas ?? []).filter((r) => r.taxa_cents === null).length;
 
-  // Revenue from paid compras
-  const { data: revenueData } = await supabase
-    .from("compras")
-    .select("total_cents")
-    .eq("status", "paid");
-  const totalRevenueCents = (revenueData ?? []).reduce((acc, r) => acc + (r.total_cents ?? 0), 0);
-
-  const QUEUES = [
-    { label: "Organizadores aguardando aprovação", value: pendingOrganizers ?? 0, href: "/admin/organizadores", urgent: (pendingOrganizers ?? 0) > 0 },
-    { label: "Seleções aguardando validação", value: pendingRaffles ?? 0, href: "/admin/selecoes", urgent: (pendingRaffles ?? 0) > 0 },
+  const FILAS = [
+    {
+      label: "Habilitações aguardando verificação",
+      valor: habilitacoesPendentes ?? 0,
+      href: "/admin/habilitacoes",
+      prazo: "3 dias úteis",
+    },
+    {
+      label: "Empresas aguardando KYB",
+      valor: kybPendentes ?? 0,
+      href: "/admin/empresas",
+      prazo: "—",
+    },
+    {
+      label: "Disputas sem decisão",
+      valor: disputasAbertas ?? 0,
+      href: "/admin/disputas",
+      prazo: "10 dias úteis",
+    },
+    {
+      label: "Denúncias abertas",
+      valor: denunciasAbertas ?? 0,
+      href: "/admin/denuncias",
+      prazo: "48h para resposta",
+    },
   ];
 
-  const STATUS_LABEL: Record<string, string> = {
-    draft: "Rascunho", pending_review: "Em análise", published: "Publicada",
-    paused: "Pausada", drawing: "Em apuração", completed: "Concluída", cancelled: "Cancelada",
-  };
-  const STATUS_COLOR: Record<string, string> = {
-    draft: "text-muted border-border",
-    pending_review: "text-amber-300 border-amber-400/40",
-    published: "text-emerald-300 border-emerald-400/40",
-    paused: "text-amber-300 border-amber-400/40",
-    drawing: "text-gold-soft border-gold/40",
-    completed: "text-muted border-border",
-    cancelled: "text-red-400 border-red-400/40",
-  };
-
-  const PURCHASE_STATUS_COLOR: Record<string, string> = {
-    paid: "text-emerald-300",
-    pending_payment: "text-amber-300",
-    cancelled: "text-muted",
-    refunded: "text-red-400",
-  };
-
-  function org(row: unknown): string {
-    const r = row as { organizers?: { display_name?: string } | { display_name?: string }[] | null };
-    const o = Array.isArray(r?.organizers) ? r.organizers[0] : r?.organizers;
-    return o?.display_name ?? "—";
-  }
-
-  function buyer(row: unknown): string {
-    const r = row as { profiles?: { full_name?: string } | { full_name?: string }[] | null };
-    const p = Array.isArray(r?.profiles) ? r.profiles[0] : r?.profiles;
-    return p?.full_name ?? "—";
-  }
-
   return (
-    <div className="mx-auto max-w-7xl px-6 py-10 space-y-10">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10">
+      <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-semibold">Painel administrativo</h1>
-          <p className="text-muted text-sm mt-1">VeritaSelect — visão completa da plataforma</p>
+          <p className="text-xs uppercase tracking-wide text-erro">Painel administrativo</p>
+          <h1 className="text-2xl font-semibold tracking-tight mt-1">Verita Select · DealBridge</h1>
         </div>
         <form action={logoutAdmin}>
-          <button type="submit" className="text-sm px-4 py-2 rounded-md border border-border text-muted hover:border-gold/60 hover:text-foreground transition-colors">
+          <button
+            type="submit"
+            className="rounded-md border border-border px-3 py-1.5 text-sm text-muted hover:text-foreground transition-colors cursor-pointer"
+          >
             Sair
           </button>
         </form>
       </div>
 
-      {/* KPI cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {[
-          { label: "Usuários", value: (totalUsers ?? 0).toLocaleString("pt-BR") },
-          { label: "Organizadores", value: (totalOrganizers ?? 0).toLocaleString("pt-BR") },
-          { label: "Seleções publicadas", value: (totalPublished ?? 0).toLocaleString("pt-BR") },
-          { label: "Pausadas", value: (totalPaused ?? 0).toLocaleString("pt-BR") },
-          { label: "Concluídas", value: (totalCompleted ?? 0).toLocaleString("pt-BR") },
-          {
-            label: "Receita confirmada",
-            value: (totalRevenueCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
-          },
-        ].map((kpi) => (
-          <div key={kpi.label} className="rounded-xl border border-border bg-surface p-4">
-            <p className="text-xs text-muted mb-1">{kpi.label}</p>
-            <p className="text-lg font-semibold truncate">{kpi.value}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Action queues */}
-      <div className="grid sm:grid-cols-2 gap-3">
-        {QUEUES.map((q) => (
+      <h2 className="text-sm uppercase tracking-wide text-muted mb-4">Filas com prazo</h2>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-10">
+        {FILAS.map((f) => (
           <Link
-            key={q.label}
-            href={q.href}
-            className={`rounded-xl border p-5 hover:border-gold/40 transition-colors ${q.urgent ? "border-amber-400/40 bg-amber-400/5" : "border-border bg-surface"}`}
+            key={f.href}
+            href={f.href}
+            className={`rounded-xl border p-5 transition-colors ${
+              f.valor > 0 ? "border-espera/50 bg-espera/5 hover:border-espera" : "border-border bg-surface hover:border-gold/40"
+            }`}
           >
-            <p className="text-xs text-muted uppercase tracking-wide">{q.label}</p>
-            <p className={`text-3xl font-semibold mt-2 ${q.urgent ? "text-amber-300" : ""}`}>{q.value}</p>
-            {q.urgent && <p className="text-xs text-amber-400 mt-1">Aguardando revisão</p>}
+            <p className={`text-3xl font-semibold ${f.valor > 0 ? "text-espera" : ""}`}>{f.valor}</p>
+            <p className="text-sm mt-2">{f.label}</p>
+            <p className="text-xs text-muted mt-1">prazo: {f.prazo}</p>
           </Link>
         ))}
       </div>
 
-      {/* Quick links */}
-      <div className="flex flex-wrap gap-2">
-        {[
-          { label: "Organizadores", href: "/admin/organizadores" },
-          { label: "Seleções", href: "/admin/selecoes" },
-          { label: "Categorias", href: "/admin/categorias" },
-          { label: "Compradores", href: "/admin/compradores" },
-          { label: "💳 Compras", href: "/admin/compras" },
-        ].map((l) => (
-          <Link key={l.label} href={l.href} className="px-4 py-2 text-sm rounded-md border border-border bg-surface hover:border-gold/40 transition-colors">
-            {l.label} →
-          </Link>
-        ))}
+      {(faixasDefinidas ?? 0) === 0 && (
+        <Card className="mb-10 border-espera/50">
+          <p className="font-medium text-espera">Faixas de taxa não definidas</p>
+          <p className="text-sm text-muted mt-2">
+            Sem a tabela de faixas, nenhuma indicação aprovada gera taxa —{" "}
+            <strong className="text-foreground">{semFaixa}</strong>{" "}
+            {semFaixa === 1 ? "aprovação está" : "aprovações estão"} sem precificação. Definir as
+            faixas é item aberto da Fase 0, junto com CNPJ, revisão dos contratos e indicação do
+            DPO. A cobrança só passa a valer para indicações registradas depois da vigência.
+          </p>
+        </Card>
+      )}
+
+      <h2 className="text-sm uppercase tracking-wide text-muted mb-4">Volume</h2>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 mb-10">
+        <Numero label="Parceiros" valor={String(totalParceiros ?? 0)} />
+        <Numero label="Empresas" valor={String(totalEmpresas ?? 0)} />
+        <Numero label="Campanhas publicadas" valor={String(campanhasPublicadas ?? 0)} />
+        <Numero
+          label="Comissão movimentada"
+          valor={formatCents(comissaoMovimentada)}
+          detalhe="pago pelas empresas, fora da plataforma"
+        />
+        <Numero label="Taxa apurada" valor={formatCents(taxaApurada)} detalhe="nossa receita" />
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-8">
-        {/* All raffles curadoria */}
-        <div className="space-y-3">
-          <h2 className="font-semibold">Curadoria de seleções</h2>
-          <div className="rounded-xl border border-border bg-surface overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-surface-2 text-muted text-xs uppercase tracking-wide">
-                <tr>
-                  <th className="text-left font-medium px-4 py-3">Seleção</th>
-                  <th className="text-left font-medium px-4 py-3">Status</th>
-                  <th className="text-left font-medium px-4 py-3">Apuração</th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody>
-                {(allRaffles ?? []).map((r) => (
-                  <tr key={r.id} className="border-t border-border">
-                    <td className="px-4 py-3">
-                      <p className="font-medium truncate max-w-[180px]">{r.title}</p>
-                      <p className="text-xs text-muted truncate">{org(r)}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full border ${STATUS_COLOR[r.status] ?? "text-muted border-border"}`}>
-                        {STATUS_LABEL[r.status] ?? r.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-muted text-xs">
-                      {r.draw_date ? new Date(r.draw_date).toLocaleDateString("pt-BR") : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Link href={`/admin/selecoes/${r.id}`} className="text-xs text-muted hover:text-foreground transition-colors">
-                        Ver →
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-                {(allRaffles ?? []).length === 0 && (
-                  <tr><td colSpan={4} className="px-4 py-6 text-center text-sm text-muted">Nenhuma seleção ainda.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Recent purchases */}
-        <div className="space-y-3">
-          <h2 className="font-semibold">Compras recentes</h2>
-          <div className="rounded-xl border border-border bg-surface overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-surface-2 text-muted text-xs uppercase tracking-wide">
-                <tr>
-                  <th className="text-left font-medium px-4 py-3">Comprador</th>
-                  <th className="text-left font-medium px-4 py-3">Valor</th>
-                  <th className="text-left font-medium px-4 py-3">Status</th>
-                  <th className="text-left font-medium px-4 py-3">Data</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(recentPurchases ?? []).map((p) => {
-                  const bp = p as { buyer_id: string };
-                  const email = emailMap.get(bp.buyer_id) ?? null;
-                  return (
-                  <tr key={p.id} className="border-t border-border">
-                    <td className="px-4 py-3 max-w-[160px]">
-                      <p className="truncate font-medium">{buyer(p)}</p>
-                      {email && <p className="truncate text-xs text-muted">{email}</p>}
-                    </td>
-                    <td className="px-4 py-3 font-medium">
-                      {((p.total_cents ?? 0) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                      <span className="text-muted text-xs ml-1">({p.quantity}x)</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs font-medium ${PURCHASE_STATUS_COLOR[p.status] ?? "text-muted"}`}>
-                        {p.status === "paid" ? "Pago" : p.status === "pending_payment" ? "Pendente" : p.status === "cancelled" ? "Cancelado" : p.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-muted text-xs">
-                      {new Date(p.created_at).toLocaleDateString("pt-BR")}
-                    </td>
-                  </tr>
-                  );
-                })}
-                {(recentPurchases ?? []).length === 0 && (
-                  <tr><td colSpan={4} className="px-4 py-6 text-center text-sm text-muted">Nenhuma compra ainda.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+      <h2 className="text-sm uppercase tracking-wide text-muted mb-4">
+        Auditoria — últimos eventos
+      </h2>
+      <Card>
+        {!auditoria?.length ? (
+          <p className="text-sm text-muted">Nenhum evento registrado.</p>
+        ) : (
+          <ul className="divide-y divide-border/60">
+            {(auditoria as unknown as EventoAuditoria[]).map((e) => (
+              <li key={e.id} className="py-2.5 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <code className="text-xs text-gold-soft">{e.action}</code>
+                  {e.actor_role && <Pill>{e.actor_role}</Pill>}
+                  {e.target_table && (
+                    <span className="text-xs text-muted truncate">{e.target_table}</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 text-xs text-muted shrink-0">
+                  {e.actor_ip && <span className="font-mono">{e.actor_ip}</span>}
+                  <span>{formatDataHora(e.created_at)}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="text-xs text-muted mt-4 pt-4 border-t border-border/60">
+          O log é append-only por trigger no banco: nem esta aplicação nem a chave de serviço
+          conseguem alterar ou apagar um evento. Retenção mínima de 6 meses (Marco Civil art. 15).
+        </p>
+      </Card>
     </div>
+  );
+}
+
+function Numero({
+  label,
+  valor,
+  detalhe,
+}: {
+  label: string;
+  valor: string;
+  detalhe?: string;
+}) {
+  return (
+    <Card>
+      <p className="text-xs uppercase tracking-wide text-muted">{label}</p>
+      <p className="text-2xl font-semibold mt-2">{valor}</p>
+      {detalhe && <p className="text-xs text-muted mt-1">{detalhe}</p>}
+    </Card>
   );
 }

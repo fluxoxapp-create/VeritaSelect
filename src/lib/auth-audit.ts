@@ -32,23 +32,23 @@ export function sanitizeAuditText(value: string, maxLength = 254): string {
   return value.slice(0, maxLength);
 }
 
-export type ProfileRole = "buyer" | "organizer" | "admin";
+export type ProfileRole = "parceiro" | "empresa" | "admin";
 
 /**
  * Looks up the authoritative role for an authenticated user from
  * `profiles.role` — NOT `user_metadata`, which only ever reflects what the
- * client sent at signup (always defaults to 'buyer' there) and is never
- * updated on promotion to organizer/admin (see migration 0003's comment:
- * promotion happens through the audited admin panel, not client metadata).
- * Trusting `user_metadata.role` for an audit trail would silently mislabel
- * every promoted account forever.
+ * client sent at signup (always defaults to 'parceiro' there) and is never
+ * updated on promotion to empresa/admin (see migration 0021's comment:
+ * promotion happens through the audited onboarding/admin panel, not client
+ * metadata). Trusting `user_metadata.role` for an audit trail would silently
+ * mislabel every promoted account forever.
  */
 export async function getProfileRole(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<ProfileRole> {
   const { data } = await supabase.from("profiles").select("role").eq("id", userId).maybeSingle();
-  return (data?.role as ProfileRole | undefined) ?? "buyer";
+  return (data?.role as ProfileRole | undefined) ?? "parceiro";
 }
 
 export type AuthAuditAction =
@@ -63,9 +63,9 @@ export type AuthAuditAction =
   | "auth.email_changed";
 
 /**
- * Appends an entry to the append-only audit_log for a buyer/organizer auth
+ * Appends an entry to the append-only audit_log for a parceiro/empresa auth
  * event. Uses the service-role client because RLS only grants admins read
- * access and inserts are service-role-only (see migration 0001) — buyers
+ * access and inserts are service-role-only (see migration 0001) — users
  * must never be able to write their own audit trail.
  *
  * Never throws: audit logging must not block or break the auth flow it is
@@ -73,7 +73,7 @@ export type AuthAuditAction =
  */
 export async function logAuthEvent(params: {
   actorId: string | null;
-  actorRole: "buyer" | "organizer" | "admin" | null;
+  actorRole: ProfileRole | null;
   action: AuthAuditAction;
   metadata?: Record<string, unknown>;
 }) {

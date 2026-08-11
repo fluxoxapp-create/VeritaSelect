@@ -10,7 +10,7 @@ export default function AdminLoginPage() {
     <div className="mx-auto max-w-md px-6 py-24">
       <h1 className="text-2xl font-semibold mb-2">Acesso administrativo</h1>
       <p className="text-muted text-sm mb-8">
-        Área restrita à equipe VeritaSelect. Todas as tentativas de acesso ficam registradas.
+        Área restrita à equipe Verita Select. Todas as tentativas de acesso ficam registradas.
       </p>
 
       <form action={formAction} className="space-y-4">

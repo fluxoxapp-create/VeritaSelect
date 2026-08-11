@@ -1,151 +1,201 @@
-import Image from "next/image";
 import Link from "next/link";
-import { RaffleCard } from "@/components/raffle-card";
-import { coverImage } from "@/lib/cover-image";
-import { getPublishedRaffles } from "@/lib/data/raffles";
-import { getWinners } from "@/lib/data/winners";
+import { BotaoLink, Card, Pill } from "@/components/ui";
+import { listarCampanhasPublicas } from "@/lib/data/campanhas";
+import { formatComissao } from "@/lib/format";
+import { infoAtividade } from "@/lib/domain/atividades";
 
 export default async function Home() {
-  const [raffles, winners] = await Promise.all([getPublishedRaffles(), getWinners(3)]);
-
-  const highlights = raffles.slice(0, 3);
-  const endingSoon = [...raffles]
-    .sort((a, b) => a.drawDate.localeCompare(b.drawDate))
-    .slice(0, 4);
+  const destaques = (await listarCampanhasPublicas()).slice(0, 3);
 
   return (
-    <div>
-      <section className="border-b border-border bg-gradient-to-b from-surface to-background overflow-x-hidden">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-16 sm:py-24 grid lg:grid-cols-2 gap-10 sm:gap-12 items-center">
-          <div className="space-y-5 sm:space-y-6 min-w-0">
-            <span className="inline-block text-xs uppercase tracking-[0.15em] sm:tracking-[0.2em] text-gold-soft border border-gold/40 rounded-full px-3 py-1">
-              Plataforma premium · organizadores verificados
-            </span>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold leading-tight text-balance">
-              Sorteios premium <span className="text-gradient-gold">verificados</span>.
-            </h1>
-            <p className="text-muted text-base sm:text-lg max-w-lg">
-              Caminhonetes, máquinas agrícolas, motos e barcos de organizadores
-              auditados pela nossa equipe. Qualquer pessoa participa — só os
-              mais confiáveis anunciam.
-            </p>
-            <div className="flex flex-wrap gap-3 sm:gap-4">
-              <Link
-                href="/sorteios"
-                className="px-6 py-3 rounded-md bg-gold text-background font-medium hover:bg-gold-soft transition-colors"
-              >
-                Ver sorteios
-              </Link>
-              <Link
-                href="/como-funciona"
-                className="px-6 py-3 rounded-md border border-border hover:border-gold/60 transition-colors"
-              >
-                Como funciona
-              </Link>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 pt-4 text-sm text-muted">
-              <div>
-                <p className="text-2xl font-semibold text-foreground">100%</p>
-                <p>organizadores com KYC</p>
-              </div>
-              <div>
-                <p className="text-2xl font-semibold text-foreground">+30 mil</p>
-                <p>cotas vendidas</p>
-              </div>
-              <div>
-                <p className="text-2xl font-semibold text-foreground">Loteria Federal</p>
-                <p>apuração oficial</p>
-              </div>
-            </div>
+    <>
+      <section className="hero-glow border-b border-border/60">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-20 sm:py-28 text-center">
+          <Pill tom="gold">Marketplace de oportunidades de venda B2B</Pill>
+          <h1 className="mt-6 text-4xl sm:text-6xl font-semibold tracking-tight leading-[1.08]">
+            Empresas que querem vender.
+            <br />
+            Vendedores que <span className="text-gradient-gold">escolhem</span> o que vender.
+          </h1>
+          <p className="mt-6 text-base sm:text-lg text-muted max-w-2xl mx-auto">
+            A empresa publica uma campanha com a comissão que paga. O parceiro escolhe onde
+            atuar, indica clientes e recebe a comissão <strong className="text-foreground">integral</strong> —
+            sem vínculo, sem exclusividade, sem CLT.
+          </p>
+          <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
+            <BotaoLink href="/campanhas">Ver campanhas</BotaoLink>
+            <BotaoLink href="/para-empresas" variante="secundario">
+              Publicar uma campanha
+            </BotaoLink>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 min-w-0">
-            {highlights.length === 0 && (
-              <div className="col-span-2 rounded-xl border border-dashed border-border bg-surface p-8 text-center text-sm text-muted">
-                Em breve, novas seleções premium por aqui.
-              </div>
-            )}
-            {highlights.map((raffle, i) => (
-              <div
-                key={raffle.slug}
-                className={`rounded-xl border border-border bg-surface overflow-hidden flex ${
-                  i === 0 ? "col-span-2 flex-row" : "flex-col"
-                }`}
-              >
-                <div className={`relative bg-surface-2 ${i === 0 ? "w-28 sm:w-48 shrink-0" : "h-28 w-full"}`}>
-                  <Image
-                    src={coverImage(raffle)}
-                    alt={raffle.title}
-                    fill
-                    sizes="240px"
-                    className="object-cover"
-                  />
-                </div>
-                <div className="p-3 sm:p-4 flex flex-col justify-center min-w-0">
-                  <p className="font-semibold text-sm sm:text-base truncate">{raffle.title}</p>
-                  <p className="text-xs text-muted truncate">{raffle.organizer}</p>
-                </div>
-              </div>
-            ))}
+          <p className="mt-6 text-xs text-muted">
+            A plataforma é gratuita para o parceiro. Nenhuma taxa, nenhuma retenção.
+          </p>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 py-16">
+        <div className="grid gap-6 md:grid-cols-2">
+          <Card>
+            <p className="text-xs uppercase tracking-wide text-gold-soft">Para a empresa</p>
+            <h2 className="text-xl font-semibold mt-2">Venda mais sem contratar</h2>
+            <p className="text-sm text-muted mt-2">
+              Uma rede de vendedores independentes, pagando só quando a indicação é aprovada
+              por você.
+            </p>
+            <ul className="mt-5 space-y-2.5 text-sm text-muted">
+              <Item>Publique campanhas com a comissão que você define</Item>
+              <Item>Aprove cada indicação — você decide o que vira venda</Item>
+              <Item>Pague o parceiro direto; a plataforma cobra só de você</Item>
+              <Item>Certifique quem vende o seu produto antes de liberar</Item>
+            </ul>
+            <div className="mt-6">
+              <BotaoLink href="/para-empresas" variante="secundario" tamanho="sm">
+                Área da empresa →
+              </BotaoLink>
+            </div>
+          </Card>
+
+          <Card>
+            <p className="text-xs uppercase tracking-wide text-gold-soft">Para o parceiro</p>
+            <h2 className="text-xl font-semibold mt-2">Escolha o que vender</h2>
+            <p className="text-sm text-muted mt-2">
+              Um cardápio de campanhas com comissão, público e ticket à vista. Você decide onde
+              investir seu tempo.
+            </p>
+            <ul className="mt-5 space-y-2.5 text-sm text-muted">
+              <Item>Receba a comissão integral — a plataforma é grátis para você</Item>
+              <Item>Atue em quantas campanhas quiser, sem exclusividade</Item>
+              <Item>Registre a indicação e acompanhe até o pagamento</Item>
+              <Item>Sem meta, sem jornada, sem chefe</Item>
+            </ul>
+            <div className="mt-6">
+              <BotaoLink href="/para-parceiros" variante="secundario" tamanho="sm">
+                Área do parceiro →
+              </BotaoLink>
+            </div>
+          </Card>
+        </div>
+      </section>
+
+      <section className="border-y border-border/60 bg-surface/30">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-16">
+          <p className="text-xs uppercase tracking-wide text-gold-soft">Como funciona</p>
+          <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight mt-2">
+            Da campanha à comissão, com prova em cada passo
+          </h2>
+
+          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <Passo n="01" titulo="Empresa publica">
+              Define produto, público, comissão e o que conta como resultado útil.
+            </Passo>
+            <Passo n="02" titulo="Parceiro adere">
+              Escolhe a campanha, faz a certificação de produto e aceita o contrato.
+            </Passo>
+            <Passo n="03" titulo="Indica e registra">
+              Prospecta e registra o cliente com carimbo de tempo — a prova da atribuição.
+            </Passo>
+            <Passo n="04" titulo="Aprova e paga">
+              A empresa aprova, paga o parceiro direto e a comissão vai integral.
+            </Passo>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 py-12 sm:py-16">
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 py-16">
         <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
           <div>
-            <h2 className="text-2xl font-semibold">Encerrando em breve</h2>
-            <p className="text-muted text-sm mt-1">Garanta sua cota antes da apuração.</p>
+            <p className="text-xs uppercase tracking-wide text-gold-soft">Campanhas no ar</p>
+            <h2 className="text-2xl font-semibold tracking-tight mt-2">
+              Onde dá para atuar agora
+            </h2>
           </div>
-          <Link href="/sorteios" className="text-sm text-gold-soft hover:text-gold whitespace-nowrap">
-            Ver todos →
+          <Link href="/campanhas" className="text-sm text-muted hover:text-foreground">
+            Ver todas →
           </Link>
         </div>
-        {endingSoon.length === 0 ? (
-          <p className="text-sm text-muted border border-dashed border-border rounded-xl p-8 text-center">
-            Nenhuma seleção publicada no momento. Volte em breve.
-          </p>
+
+        {destaques.length === 0 ? (
+          <Card className="text-center py-12">
+            <p className="font-medium">Nenhuma campanha publicada ainda.</p>
+            <p className="text-sm text-muted mt-2 max-w-md mx-auto">
+              A plataforma está em construção — a Fase 0 (constituição da PJ e revisão jurídica
+              dos contratos) precisa fechar antes da primeira campanha real ir ao ar.
+            </p>
+          </Card>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {endingSoon.map((raffle) => (
-              <RaffleCard key={raffle.slug} raffle={raffle} />
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {destaques.map((c) => (
+              <Link
+                key={c.id}
+                href={`/campanhas/${c.slug}`}
+                className="rounded-xl border border-border bg-surface p-5 hover:border-gold/40 transition-colors"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-muted truncate">{c.empresa_nome}</span>
+                  {c.regime === "habilitacao" && <Pill tom="espera">Regulado</Pill>}
+                </div>
+                <p className="font-medium mt-2 leading-snug">{c.titulo}</p>
+                <p className="text-sm text-muted mt-1 line-clamp-2">{c.produto}</p>
+                <div className="mt-4 pt-4 border-t border-border/60 flex items-baseline justify-between gap-3">
+                  <span className="text-lg font-semibold text-gold-soft">
+                    {formatComissao(c.comissao_cents, c.comissao_recorrente)}
+                  </span>
+                  <span className="text-xs text-muted truncate">
+                    {infoAtividade(c.atividade_parceiro).label}
+                  </span>
+                </div>
+              </Link>
             ))}
           </div>
         )}
       </section>
 
-      <section className="border-t border-border">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-12 sm:py-16">
-          <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
-            <div>
-              <h2 className="text-2xl font-semibold">Últimos ganhadores</h2>
-              <p className="text-muted text-sm mt-1">Resultados auditáveis, com apuração pública.</p>
-            </div>
-            <Link href="/ganhadores" className="text-sm text-gold-soft hover:text-gold whitespace-nowrap">
-              Ver todos →
-            </Link>
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 pb-20">
+        <Card className="text-center">
+          <h2 className="text-xl font-semibold">A plataforma nunca toca no dinheiro</h2>
+          <p className="text-sm text-muted mt-3 max-w-2xl mx-auto">
+            A empresa paga a comissão diretamente ao parceiro, por meio próprio. Nenhum valor
+            transita por aqui — não há carteira, saldo, custódia ou repasse. A Verita Select
+            cobra apenas da empresa, em fatura mensal separada, um valor fixo por indicação
+            aprovada.
+          </p>
+          <div className="mt-6">
+            <BotaoLink href="/seguranca" variante="secundario" tamanho="sm">
+              Como garantimos isso →
+            </BotaoLink>
           </div>
-          {winners.length === 0 ? (
-            <p className="text-sm text-muted border border-dashed border-border rounded-xl p-8 text-center">
-              As primeiras apurações acontecerão em breve — e serão publicadas aqui.
-            </p>
-          ) : (
-            <div className="grid sm:grid-cols-3 gap-6">
-              {winners.map((winner) => (
-                <div key={winner.number} className="rounded-xl border border-border bg-surface p-6">
-                  <p className="text-xs uppercase tracking-wide text-gold-soft mb-2">
-                    Número {winner.number}
-                  </p>
-                  <p className="font-semibold">{winner.name}</p>
-                  <p className="text-sm text-muted mt-1">ganhou {winner.prize}</p>
-                  <p className="text-xs text-muted mt-3">
-                    Apurado em {new Date(winner.drawnAt).toLocaleDateString("pt-BR")}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        </Card>
       </section>
+    </>
+  );
+}
+
+function Item({ children }: { children: React.ReactNode }) {
+  return (
+    <li className="flex gap-2.5">
+      <span aria-hidden className="text-gold shrink-0">
+        ◇
+      </span>
+      <span>{children}</span>
+    </li>
+  );
+}
+
+function Passo({
+  n,
+  titulo,
+  children,
+}: {
+  n: string;
+  titulo: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-surface p-5">
+      <span className="font-mono text-xs text-gold">{n}</span>
+      <p className="font-medium mt-2">{titulo}</p>
+      <p className="text-sm text-muted mt-1.5">{children}</p>
     </div>
   );
 }

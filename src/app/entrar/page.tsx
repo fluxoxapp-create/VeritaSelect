@@ -27,7 +27,8 @@ function StatusBanner() {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") ?? "/dashboard";
+  // Vazio = a action decide o destino pelo papel do usuário.
+  const next = searchParams.get("next") ?? "";
 
   const [state, formAction, pending] = useActionState(signIn, undefined);
 
@@ -90,7 +91,7 @@ export default function EntrarPage() {
     <div className="mx-auto max-w-md px-6 py-20">
       <h1 className="text-2xl font-semibold mb-2">Entrar na sua conta</h1>
       <p className="text-muted text-sm mb-8">
-        Acesse seus acessos, acompanhe seleções e receba alertas de novas oportunidades.
+        Acompanhe suas indicações, prazos e comissões — ou a fila de aprovação da sua empresa.
       </p>
       <Suspense fallback={null}>
         <StatusBanner />

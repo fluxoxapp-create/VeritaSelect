@@ -9,6 +9,11 @@
   --border: #2b2c30;
   --gold: #c9a24a;
   --gold-soft: #e4cd95;
+  /* Estados do ciclo da indicação. Verde só para o que já é dinheiro
+     reconhecido (aprovada/paga) — não para "registrada", que ainda não é. */
+  --ok: #4ea87a;
+  --espera: #c9a24a;
+  --erro: #d2685f;
 }
 
 @theme inline {
@@ -20,6 +25,9 @@
   --color-border: var(--border);
   --color-gold: var(--gold);
   --color-gold-soft: var(--gold-soft);
+  --color-ok: var(--ok);
+  --color-espera: var(--espera);
+  --color-erro: var(--erro);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -35,4 +43,11 @@ body {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+
+/* Fundo discreto para as seções de destaque da home. */
+.hero-glow {
+  background:
+    radial-gradient(60% 80% at 50% 0%, rgba(201, 162, 74, 0.10), transparent 70%),
+    var(--background);
 }

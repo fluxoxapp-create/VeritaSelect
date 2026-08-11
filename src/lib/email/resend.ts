@@ -1,7 +1,7 @@
 import "server-only";
 import { Resend } from "resend";
 
-const FROM_ADDRESS = process.env.RESEND_FROM_EMAIL ?? "VeritaSelect <noreply@veritaselect.com.br>";
+const FROM_ADDRESS = process.env.RESEND_FROM_EMAIL ?? "Verita Select <noreply@veritaselect.com.br>";
 
 let client: Resend | null = null;
 

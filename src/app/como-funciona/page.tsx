@@ -1,77 +1,144 @@
-const STEPS = [
-  {
-    title: "1. Escolha uma seleção",
-    text: "Navegue por oportunidades curadas — veículos, máquinas agrícolas, embarcações e experiências, todas com organizador verificado.",
-  },
-  {
-    title: "2. Garanta seus acessos",
-    text: "Defina quantos acessos (cotas) quer e pague via Pix com confirmação instantânea.",
-  },
-  {
-    title: "3. Acompanhe a apuração",
-    text: "A data e a regra de apuração são públicas desde o lançamento — o resultado segue o sorteio oficial da Loteria Federal.",
-  },
-  {
-    title: "4. Receba seu prêmio",
-    text: "Ganhadores são contatados, validados e o processo de entrega é acompanhado pela equipe VeritaSelect até a conclusão.",
-  },
-];
+import type { Metadata } from "next";
+import { PageHeader, Card, BotaoLink } from "@/components/ui";
+import { PRAZOS, PRAZOS_FIXOS, ESCALA_INADIMPLENCIA } from "@/lib/domain/indicacoes";
 
-const TIERS = [
-  {
-    name: "Acesso",
-    range: "R$ 19 – 49",
-    description: "Entrada para participar de seleções abertas com prêmios de alto giro.",
-  },
-  {
-    name: "Premium",
-    range: "R$ 99 – 299",
-    description: "Seleções com prêmios de maior valor e menos participantes por vaga.",
-  },
-  {
-    name: "Elite",
-    range: "R$ 500+",
-    description: "Curadoria reduzida, experiências exclusivas e atendimento dedicado.",
-  },
-];
+export const metadata: Metadata = {
+  title: "Como funciona",
+  description:
+    "Da campanha à comissão: registro com carimbo de tempo, aprovação com prazo, aprovação tácita e pagamento direto da empresa ao parceiro.",
+};
 
-export default function ComoFuncionaPage() {
+export default function ComoFunciona() {
   return (
-    <div className="mx-auto max-w-5xl px-6 py-16 space-y-20">
-      <div>
-        <h1 className="text-3xl font-semibold">Como funciona</h1>
-        <p className="text-muted mt-2 max-w-2xl">
-          A VeritaSelect conecta pessoas a oportunidades selecionadas — com curadoria,
-          verificação de organizadores e total transparência sobre regras e
-          resultados.
-        </p>
+    <div className="mx-auto max-w-3xl px-4 sm:px-6 py-12">
+      <PageHeader
+        titulo="Como funciona"
+        descricao="Quatro passos, cada um com prova registrada. Os prazos correm sozinhos — ninguém precisa cobrar ninguém para que a regra valha."
+      />
+
+      <div className="space-y-4">
+        <Passo n="01" titulo="A empresa publica a campanha">
+          Define o produto, o público-alvo, a comissão que paga e — o mais importante —{" "}
+          <strong className="text-foreground">o que conta como resultado útil</strong>. Esse
+          critério vira contrato: ela não poderá recusar uma indicação por motivo diferente do
+          que publicou.
+        </Passo>
+
+        <Passo n="02" titulo="O parceiro adere">
+          Sem vaga, sem entrevista, sem recrutamento. O parceiro escolhe a campanha e aceita o
+          Contrato de Campanha, que é congelado e hasheado com data, hora e IP. Se a empresa
+          alterar a campanha depois, o contrato dele continua sendo o que ele leu.
+        </Passo>
+
+        <Passo n="03" titulo="Indica e registra">
+          O parceiro registra o cliente <strong className="text-foreground">antes</strong> do
+          primeiro contato dele com a empresa. O registro gera um carimbo de tempo com IP — é
+          essa marca que decide a atribuição se dois parceiros indicarem o mesmo lead. Vale o
+          primeiro registro válido.
+        </Passo>
+
+        <Passo n="04" titulo="A empresa aprova e paga">
+          A empresa tem o prazo da campanha para aprovar ou recusar. Recusa exige motivo de uma
+          lista fechada e prova. Aprovada, ela paga a comissão{" "}
+          <strong className="text-foreground">diretamente ao parceiro</strong> e registra a
+          liquidação aqui.
+        </Passo>
       </div>
 
-      <div className="grid sm:grid-cols-2 gap-6">
-        {STEPS.map((step) => (
-          <div key={step.title} className="rounded-xl border border-border bg-surface p-6">
-            <h2 className="font-semibold mb-2">{step.title}</h2>
-            <p className="text-sm text-muted">{step.text}</p>
-          </div>
-        ))}
-      </div>
-
-      <div>
-        <h2 className="text-2xl font-semibold mb-2">Camadas de acesso</h2>
-        <p className="text-muted mb-8 max-w-2xl">
-          As seleções são organizadas em camadas, para que cada pessoa encontre
-          o nível de oportunidade e exclusividade que faz sentido para ela.
+      <Card className="mt-10">
+        <h2 className="font-medium">O prazo corre contra a empresa</h2>
+        <p className="text-sm text-muted mt-2">
+          Vencido o prazo de análise sem manifestação, a indicação é{" "}
+          <strong className="text-foreground">aprovada automaticamente</strong> e gera comissão
+          normalmente. A empresa é avisada {PRAZOS_FIXOS.avisoAntesDoVencimentoDias} dias antes do
+          vencimento — o silêncio dela não pode virar prejuízo de quem trabalhou.
         </p>
-        <div className="grid sm:grid-cols-3 gap-6">
-          {TIERS.map((tier) => (
-            <div key={tier.name} className="rounded-xl border border-border bg-surface p-6">
-              <p className="text-xs uppercase tracking-wide text-gold-soft mb-2">{tier.name}</p>
-              <p className="text-2xl font-semibold mb-3">{tier.range}</p>
-              <p className="text-sm text-muted">{tier.description}</p>
-            </div>
+        <table className="w-full text-sm mt-5">
+          <thead>
+            <tr className="text-left text-muted">
+              <th className="font-normal pb-2">Prazo</th>
+              <th className="font-normal pb-2">Padrão</th>
+              <th className="font-normal pb-2">Limites</th>
+            </tr>
+          </thead>
+          <tbody className="text-muted">
+            {Object.values(PRAZOS).map((p) => (
+              <tr key={p.label} className="border-t border-border/50">
+                <td className="py-2 pr-4">{p.label}</td>
+                <td className="py-2 pr-4">{p.padrao} dias</td>
+                <td className="py-2">
+                  {p.min} a {p.max} dias
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="text-xs text-muted mt-4">
+          A campanha não pode ser publicada com prazos fora desses limites. A validação é do
+          servidor e do banco, não do formulário.
+        </p>
+      </Card>
+
+      <Card className="mt-6">
+        <h2 className="font-medium">Se a empresa atrasar o pagamento</h2>
+        <p className="text-sm text-muted mt-2">
+          A escala começa no primeiro dia e é automática. O parceiro não precisa reclamar para
+          que ela corra.
+        </p>
+        <ol className="mt-4 space-y-2 text-sm text-muted">
+          {ESCALA_INADIMPLENCIA.map((e) => (
+            <li key={e.dias} className="flex gap-4">
+              <span className="font-mono text-xs text-espera w-16 shrink-0 pt-0.5">
+                {e.dias} {e.dias === 1 ? "dia" : "dias"}
+              </span>
+              <span>{e.consequencia}</span>
+            </li>
           ))}
-        </div>
+        </ol>
+      </Card>
+
+      <Card className="mt-6">
+        <h2 className="font-medium">Duas relações financeiras que nunca se cruzam</h2>
+        <pre className="mt-4 text-xs font-mono text-muted overflow-x-auto leading-relaxed">
+{`Empresa  ──── comissão integral ────►  Parceiro       (fora da plataforma)
+Empresa  ──── fatura mensal ───────►  Verita Select  (taxa por indicação aprovada)
+Parceiro ──── nada ────────────────►  Verita Select  (a plataforma é gratuita para ele)`}
+        </pre>
+        <p className="text-sm text-muted mt-4">
+          A plataforma não custodia, não intermedia e não repassa recursos. Não existe carteira,
+          saldo, escrow ou saque — custódia de dinheiro de terceiro é atividade de instituição de
+          pagamento, e este não é o nosso negócio.
+        </p>
+      </Card>
+
+      <div className="mt-10 flex flex-wrap gap-3">
+        <BotaoLink href="/campanhas">Ver campanhas</BotaoLink>
+        <BotaoLink href="/termos/comissionamento" variante="secundario">
+          Ler a política completa
+        </BotaoLink>
       </div>
     </div>
+  );
+}
+
+function Passo({
+  n,
+  titulo,
+  children,
+}: {
+  n: string;
+  titulo: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card>
+      <div className="flex gap-5">
+        <span className="font-mono text-sm text-gold shrink-0">{n}</span>
+        <div>
+          <p className="font-medium">{titulo}</p>
+          <p className="text-sm text-muted mt-2">{children}</p>
+        </div>
+      </div>
+    </Card>
   );
 }

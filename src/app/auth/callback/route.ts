@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code");
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type");
-  const next = safeNext(searchParams.get("next"), "/dashboard");
+  const next = safeNext(searchParams.get("next"), "/app");
 
   const supabase = await createSupabaseServerClient();
 
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (type === "email_change") {
-    return NextResponse.redirect(new URL("/dashboard/conta?email_alterado=1", origin));
+    return NextResponse.redirect(new URL("/conta?email_alterado=1", origin));
   }
 
   return NextResponse.redirect(new URL(next, origin));

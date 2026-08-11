@@ -9,7 +9,7 @@ type FormState = { error?: string; redirectTo?: string } | undefined;
 export async function signIn(_prevState: FormState, formData: FormData): Promise<FormState> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
-  const next = String(formData.get("next") ?? "/dashboard").trim();
+  const next = String(formData.get("next") ?? "").trim();
 
   if (!email || !password) {
     return { error: "Informe e-mail e senha." };
@@ -40,16 +40,19 @@ export async function signIn(_prevState: FormState, formData: FormData): Promise
     return { error: "E-mail ou senha inválidos." };
   }
 
+  const role = await getProfileRole(supabase, data.user.id);
+
   await logAuthEvent({
     actorId: data.user.id,
-    actorRole: await getProfileRole(supabase, data.user.id),
+    actorRole: role,
     action: "auth.sign_in",
   });
 
   // Return the redirect target — the client component does the navigation
   // so the session cookies set by signInWithPassword are already committed
   // before the redirect happens (avoids Next.js redirect() swallowing cookies).
-  const redirectTo = next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
+  const padrao = role === "admin" ? "/admin" : role === "empresa" ? "/empresa" : "/app";
+  const redirectTo = next.startsWith("/") && !next.startsWith("//") ? next : padrao;
   return { redirectTo };
 }
 

@@ -16,6 +16,7 @@ type Campanha = {
   atividade_parceiro: Atividade;
   comissao_cents: number;
   comissao_recorrente: boolean;
+  exige_certificacao: boolean;
   publicada_em: string | null;
   created_at: string;
 };
@@ -35,7 +36,7 @@ export default async function CampanhasEmpresa() {
   const { data } = await supabase
     .from("campanhas")
     .select(
-      "id, slug, titulo, produto, status, atividade_parceiro, comissao_cents, comissao_recorrente, publicada_em, created_at",
+      "id, slug, titulo, produto, status, atividade_parceiro, comissao_cents, comissao_recorrente, exige_certificacao, publicada_em, created_at",
     )
     .order("created_at", { ascending: false });
 
@@ -81,6 +82,11 @@ export default async function CampanhasEmpresa() {
                           Regulada
                         </Pill>
                       )}
+                      {c.exige_certificacao && (
+                        <Pill title="O parceiro revisa o material e responde ao questionário antes de indicar.">
+                          Certificação
+                        </Pill>
+                      )}
                     </div>
                     <p className="text-sm text-muted mt-1">{c.produto}</p>
                     <p className="text-xs text-muted mt-1">
@@ -96,6 +102,15 @@ export default async function CampanhasEmpresa() {
                     <p className="text-lg font-semibold text-gold-soft">
                       {formatComissao(c.comissao_cents, c.comissao_recorrente)}
                     </p>
+                    <div className="mt-2">
+                      <BotaoLink
+                        href={`/empresa/campanhas/${c.slug}/certificacao`}
+                        variante="secundario"
+                        tamanho="sm"
+                      >
+                        Certificação
+                      </BotaoLink>
+                    </div>
                   </div>
                 </div>
               </Card>

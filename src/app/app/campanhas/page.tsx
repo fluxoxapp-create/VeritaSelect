@@ -70,9 +70,10 @@ export default async function MinhasCampanhas() {
                           Campanha pausada
                         </Pill>
                       )}
-                      {a.certificacao === "pendente" && (
+                      {(a.certificacao === "pendente" || a.certificacao === "reprovada") && (
                         <Pill tom="espera">Certificação pendente</Pill>
                       )}
+                      {a.certificacao === "aprovada" && <Pill tom="ok">Certificado</Pill>}
                     </div>
                     <p className="text-sm text-muted mt-1">
                       {a.campanhas?.empresas?.nome_fantasia ?? "—"} · {a.campanhas?.produto ?? ""}
@@ -88,18 +89,28 @@ export default async function MinhasCampanhas() {
                         : "—"}
                     </p>
                     <div className="mt-2">
-                      <BotaoLink href="/app/indicacoes/nova" variante="secundario" tamanho="sm">
-                        Registrar indicação
-                      </BotaoLink>
+                      {a.certificacao === "pendente" || a.certificacao === "reprovada" ? (
+                        <BotaoLink
+                          href={`/app/campanhas/${a.campanhas?.slug ?? ""}/certificacao`}
+                          tamanho="sm"
+                        >
+                          Fazer certificação
+                        </BotaoLink>
+                      ) : (
+                        <BotaoLink href="/app/indicacoes/nova" variante="secundario" tamanho="sm">
+                          Registrar indicação
+                        </BotaoLink>
+                      )}
                     </div>
                   </div>
                 </div>
 
-                {a.certificacao === "pendente" && (
+                {(a.certificacao === "pendente" || a.certificacao === "reprovada") && (
                   <p className="text-sm text-muted mt-4 pt-4 border-t border-border/60">
                     Esta campanha exige certificação de produto antes de liberar o registro de
                     indicações. É material da empresa mais um questionário — não é treinamento
-                    obrigatório nem cria vínculo.
+                    obrigatório nem cria vínculo. Sem prazo, sem limite de tentativas e sem
+                    consequência nenhuma por errar.
                   </p>
                 )}
               </Card>
